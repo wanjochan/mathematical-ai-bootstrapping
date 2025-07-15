@@ -188,7 +188,10 @@ class ComputerUseBootstrappingSystem:
 ### 3.1 Computer-Use增强的智能放大模型
 
 基础智能通过Computer-Use技术放大：
-$$I_{effective}(t) = I_{base}(t) \cdot A_{computer\_use}(t) \cdot \eta(t)$$
+
+```math
+I_{effective}(t) = I_{base}(t) \cdot A_{computer\_use}(t) \cdot \eta(t)
+```
 
 其中：
 - $I_{base}(t)$：AI的基础推理智能
@@ -198,7 +201,10 @@ $$I_{effective}(t) = I_{base}(t) \cdot A_{computer\_use}(t) \cdot \eta(t)$$
 ### 3.2 验证数学模型的递归自我改进
 
 AI能力增长的微分方程：
-$$\frac{dC(t)}{dt} = \alpha \cdot C(t) + \beta \cdot C(t) \cdot \log(1 + A_{computer\_use}(t)) + \gamma \cdot E(t)$$
+
+```math
+\frac{dC(t)}{dt} = \alpha \cdot C(t) + \beta \cdot C(t) \cdot \log(1 + A_{computer\_use}(t)) + \gamma \cdot E(t)
+```
 
 其中：
 - $\alpha$：自然学习率
@@ -206,27 +212,39 @@ $$\frac{dC(t)}{dt} = \alpha \cdot C(t) + \beta \cdot C(t) \cdot \log(1 + A_{comp
 - $\gamma$：环境反馈权重
 - $E(t)$：外部环境刺激
 
-**解析解**（当$A_{computer\_use}$稳定时）：
-$$C(t) = \left(C_0 + \frac{\gamma E_{avg}}{\lambda}\right) e^{\lambda t} - \frac{\gamma E_{avg}}{\lambda}$$
+**解析解**（当 $A_{computer\_use}$ 稳定时）：
 
-其中$\lambda = \alpha + \beta \log(1 + A_{computer\_use})$
+```math
+C(t) = \left(C_0 + \frac{\gamma E_{avg}}{\lambda}\right) e^{\lambda t} - \frac{\gamma E_{avg}}{\lambda}
+```
+
+其中 $\lambda = \alpha + \beta \log(1 + A_{computer\_use})$
 
 ### 3.3 集体智能涌现的数学模型
 
 考虑Computer-Use协作效应的集体智能：
-$$C_{collective} = \sum_{i=1}^{n} c_i \cdot (1 + A_{i}) + \Delta_{emergence}$$
+
+```math
+C_{collective} = \sum_{i=1}^{n} c_i \cdot (1 + A_{i}) + \Delta_{emergence}
+```
 
 涌现效应：
-$$\Delta_{emergence} = \gamma \cdot \prod_{i<j} \sigma(c_i A_i, c_j A_j) \cdot \rho_{computer\_use}$$
 
-其中$\rho_{computer\_use}$是Computer-Use技术的协作增强系数。
+```math
+\Delta_{emergence} = \gamma \cdot \prod_{i<j} \sigma(c_i A_i, c_j A_j) \cdot \rho_{computer\_use}
+```
+
+其中 ρ_computer_use 是Computer-Use技术的协作增强系数。
 
 ### 3.4 AGI涌现临界理论
 
 引入Computer-Use技术后的AGI涌现概率：
-$$P_{AGI}(t) = \sigma\left(\sum_{i} w_i \cdot I_i(t) \cdot A_i(t) - \theta_{critical}\right)$$
 
-**数学预测验证**：模型预测当$\sum I_i A_i > 0.85$时AGI涌现概率>50%
+```math
+P_{AGI}(t) = \sigma\left(\sum_{i} w_i \cdot I_i(t) \cdot A_i(t) - \theta_{critical}\right)
+```
+
+**数学预测验证**：模型预测当 $\sum I_i A_i > 0.85$ 时AGI涌现概率>50%
 
 ## 4. 实验设计、结果与数学验证
 
@@ -251,7 +269,7 @@ $$P_{AGI}(t) = \sigma\left(\sum_{i} w_i \cdot I_i(t) \cdot A_i(t) - \theta_{crit
 
 #### 4.2.1 Computer-Use智能放大效果
 
-| Computer-Use功能 | 基础AI能力 | 放大后能力 | 放大系数$A$ | 预测值 | 误差率 |
+| Computer-Use功能 | 基础AI能力 | 放大后能力 | 放大系数A | 预测值 | 误差率 |
 |:---------------:|:----------:|:----------:|:-----------:|:-------:|:------:|
 | 代码自动编辑 | 6.2/10 | 9.1/10 | 1.47 | 1.45 | 1.4% |
 | 环境自动配置 | 5.8/10 | 8.6/10 | 1.48 | 1.50 | 1.3% |
@@ -259,11 +277,11 @@ $$P_{AGI}(t) = \sigma\left(\sum_{i} w_i \cdot I_i(t) \cdot A_i(t) - \theta_{crit
 | 端到端部署 | 4.9/10 | 8.2/10 | 1.67 | 1.65 | 1.2% |
 | **平均** | **5.6/10** | **8.7/10** | **1.56** | **1.55** | **1.3%** |
 
-**数学模型验证**：$A_{computer\_use}$实测值1.56与理论预测1.55的误差仅1.3%
+**数学模型验证**：A_computer_use 实测值1.56与理论预测1.55的误差仅1.3%
 
 #### 4.2.2 递归改进的数学预测验证
 
-| 轮次 | 理论预测$C_{model}$ | 实测能力$C_{actual}$ | 预测误差 | Computer-Use贡献 |
+| 轮次 | 理论预测C_model | 实测能力C_actual | 预测误差 | Computer-Use贡献 |
 |:----:|:------------------:|:-------------------:|:--------:|:----------------:|
 | T=0 | 1.00 (基线) | 1.00 (基线) | 0% | - |
 | T=1 | 1.28 | 1.31 | 2.3% | 23% |
@@ -282,11 +300,11 @@ $$P_{AGI}(t) = \sigma\left(\sum_{i} w_i \cdot I_i(t) \cdot A_i(t) - \theta_{crit
 | 创新方案生成 | 2.3/次 | 4.2/次 (+83%) | 6.8/次 (+196%) | +62% |
 | 跨领域迁移 | 4.1/10 | 6.3/10 (+54%) | 8.7/10 (+112%) | +38% |
 
-涌现系数$\rho_{computer\_use} = 1.38$，验证了Computer-Use对集体智能的显著增强效应。
+涌现系数 ρ_computer_use = 1.38，验证了Computer-Use对集体智能的显著增强效应。
 
 #### 4.2.4 数学验证的跨领域AGI测试
 
-| 目标领域 | 基线AI | +Computer-Use | $I_i \cdot A_i$ | AGI指数 | 模型预测 |
+| 目标领域 | 基线AI | +Computer-Use | I_i × A_i | AGI指数 | 模型预测 |
 |:--------:|:------:|:-------------:|:---------------:|:-------:|:--------:|
 | 数学定理证明 | 3.2/10 | 7.8/10 | 0.78 | 0.78 | 0.76 |
 | 科学假设生成 | 2.8/10 | 7.2/10 | 0.72 | 0.72 | 0.71 |

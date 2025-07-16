@@ -1,0 +1,22 @@
+# CyberCorp Seed Server Dependencies
+# FastAPI and ASGI server
+fastapi>=0.68.0
+uvicorn[standard]>=0.15.0
+
+# Data validation and settings management
+pydantic>=1.8.0
+
+# System monitoring and information
+psutil>=5.8.0
+
+# Development and debugging
+python-multipart>=0.0.5
+
+# WebSocket support (included in FastAPI but listed for clarity)
+websockets>=10.0
+
+# Optional: for better JSON handling
+# orjson>=3.6.0
+
+# Optional: for additional middleware  
+# python-jose[cryptography]>=3.3.0 

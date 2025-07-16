@@ -1,15 +1,15 @@
-# AI-Corp 短期产品需求文档 (PRD)
+# CyberCorp 短期产品需求文档 (PRD)
 
 **文档版本**：v0.1  
 **创建日期**：2025年7月16日  
 **状态**：草稿  
-**作者**：AI-Corp 产品团队
+**作者**：CyberCorp 产品团队
 
 ## 1. 产品概述
 
 ### 1.1 产品愿景
 
-AI-Corp 短期目标是开发一个实用的虚拟智能公司中控系统，通过命令行工具管理 AI 员工团队，实现软件开发流程的自动化和智能化。
+CyberCorp 短期目标是开发一个实用的虚拟智能公司中控系统，通过命令行工具管理 AI 员工团队，实现软件开发流程的自动化和智能化。
 
 注意：本 PRD 是根据 mathematical-ai-bootstrapping.md
 
@@ -32,7 +32,7 @@ AI-Corp 短期目标是开发一个实用的虚拟智能公司中控系统，通
 
 ```
 ┌─────────────────────────────────────┐
-│           aicorp.py (主入口)          │
+│           cybercorp.py (主入口)       │
 │  命令解析与分发、全局配置、帮助系统    │
 └───────────┬─────────────┬───────────┘
             │             │             
@@ -51,8 +51,8 @@ AI-Corp 短期目标是开发一个实用的虚拟智能公司中控系统，通
 ### 2.2 目录结构
 
 ```
-aicorp/
-├── aicorp.py           # 主入口脚本
+cybercorp/
+├── cybercorp.py        # 主入口脚本
 ├── config/             # 配置文件目录
 │   ├── default.json    # 默认配置
 │   └── instances/      # 实例配置
@@ -81,16 +81,16 @@ aicorp/
 
 ## 3. 功能需求
 
-### 3.1 命令行接口 (aicorp.py)
+### 3.1 命令行接口 (cybercorp.py)
 
 | 功能 ID | 命令格式 | 功能描述 | 优先级 |
 |:-------:|:--------:|:--------|:-----:|
-| CLI-001 | `python aicorp.py employee <subcommand> [args]` | AI 员工管理相关命令 | P0 |
-| CLI-002 | `python aicorp.py model <subcommand> [args]` | 模型配置相关命令 | P0 |
-| CLI-003 | `python aicorp.py monitor <subcommand> [args]` | 系统监控相关命令 | P1 |
-| CLI-004 | `python aicorp.py client <client_type> [args]` | 客户端管理命令 | P0 |
-| CLI-005 | `python aicorp.py help [command]` | 显示帮助信息 | P0 |
-| CLI-006 | `python aicorp.py version` | 显示版本信息 | P2 |
+| CLI-001 | `python cybercorp.py employee <subcommand> [args]` | AI 员工管理相关命令 | P0 |
+| CLI-002 | `python cybercorp.py model <subcommand> [args]` | 模型配置相关命令 | P0 |
+| CLI-003 | `python cybercorp.py monitor <subcommand> [args]` | 系统监控相关命令 | P1 |
+| CLI-004 | `python cybercorp.py client <client_type> [args]` | 客户端管理命令 | P0 |
+| CLI-005 | `python cybercorp.py help [command]` | 显示帮助信息 | P0 |
+| CLI-006 | `python cybercorp.py version` | 显示版本信息 | P2 |
 
 ### 3.2 AI 员工管理模块
 
@@ -268,52 +268,52 @@ aicorp/
 
 ```bash
 # 初始化默认团队
-python aicorp.py employee init
+python cybercorp.py employee init
 
 # 查看所有 AI 员工
-python aicorp.py employee list
+python cybercorp.py employee list
 
 # 为经理设置 cursor-ide 模型
-python aicorp.py model set PM cursor-ide
+python cybercorp.py model set PM cursor-ide
 
 # 为开发者设置不同模型
-python aicorp.py model set Dev1 vscode-augment
-python aicorp.py model set Dev2 claude-code-cli
+python cybercorp.py model set Dev1 vscode-augment
+python cybercorp.py model set Dev2 claude-code-cli
 
 # 查看系统状态
-python aicorp.py monitor status
+python cybercorp.py monitor status
 ```
 
 ### 7.2 Windows客户端使用示例
 
 ```bash
 # 启动Windows客户端图形界面
-python aicorp.py client win-client
+python cybercorp.py client win-client
 
 # 仅命令行模式启动
-python aicorp.py client win-client --no-gui
+python cybercorp.py client win-client --no-gui
 
 # 创建Windows会话
-python aicorp.py client win-client session create dev-user
+python cybercorp.py client win-client session create dev-user
 
 # 列出所有Windows会话
-python aicorp.py client win-client session list
+python cybercorp.py client win-client session list
 
 # 在指定会话中执行命令
-python aicorp.py client win-client exec win-dev-user-0 "notepad.exe"
+python cybercorp.py client win-client exec win-dev-user-0 "notepad.exe"
 
 # 关闭指定会话
-python aicorp.py client win-client session close win-dev-user-0
+python cybercorp.py client win-client session close win-dev-user-0
 ```
 
 ### 7.3 添加董秘角色示例
 
 ```bash
 # 添加董秘角色
-python aicorp.py employee add Secretary "董秘" "协调董事与经理之间的沟通，整理会议记录"
+python cybercorp.py employee add Secretary "董秘" "协调董事与经理之间的沟通，整理会议记录"
 
 # 为董秘设置模型
-python aicorp.py model set Secretary claude-code-cli
+python cybercorp.py model set Secretary claude-code-cli
 ```
 
 ## 8. 注意事项与限制
@@ -328,7 +328,7 @@ python aicorp.py model set Secretary claude-code-cli
 
 ## 9. 结论
 
-AI-Corp 短期产品计划专注于构建一个实用的虚拟智能公司中控系统，通过命令行工具管理 AI 员工团队。这一系统将为未来更复杂的 AI 自举系统奠定基础，同时提供立即可用的价值。
+CyberCorp 短期产品计划专注于构建一个实用的虚拟智能公司中控系统，通过命令行工具管理 AI 员工团队。这一系统将为未来更复杂的 AI 自举系统奠定基础，同时提供立即可用的价值。
 
 模块化的设计确保了系统的可扩展性，使我们能够逐步添加新功能和改进现有功能。通过这种渐进式的开发方法，我们可以快速交付有价值的功能，同时为长期愿景铺平道路。
 

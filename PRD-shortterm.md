@@ -39,7 +39,13 @@ AI-Corp 短期目标是开发一个实用的虚拟智能公司中控系统，通
 ┌───────────▼─────┐ ┌─────▼───────────┐ ┌───────────────────┐
 │  AI 员工管理模块    │ │  模型配置模块    │ │  系统监控模块     │
 │ (employee/)     │ │ (model/)        │ │ (monitor/)        │
-└─────────────────┘ └─────────────────┘ └───────────────────┘
+└─────────┬───────┘ └─────────────────┘ └───────────────────┘
+          │
+          ▼
+┌─────────────────────┐
+│  客户端模块          │
+│ (clients/)          │
+└─────────────────────┘
 ```
 
 ### 2.2 目录结构
@@ -58,10 +64,19 @@ aicorp/
 │   ├── __init__.py
 │   ├── config.py       # 模型配置管理
 │   └── adapters/       # 不同模型适配器
-└── monitor/            # 系统监控模块
+├── monitor/            # 系统监控模块
+│   ├── __init__.py
+│   ├── performance.py  # 性能监控
+│   └── status.py       # 状态报告
+└── clients/            # 客户端模块
     ├── __init__.py
-    ├── performance.py  # 性能监控
-    └── status.py       # 状态报告
+    ├── README.md       # 客户端文档
+    └── win-client/     # Windows桌面客户端
+        ├── __init__.py
+        ├── main.py     # 主入口
+        ├── session.py  # 会话管理
+        ├── ui/         # 界面组件
+        └── utils/      # 工具函数
 ```
 
 ## 3. 功能需求
@@ -73,8 +88,9 @@ aicorp/
 | CLI-001 | `python aicorp.py employee <subcommand> [args]` | AI 员工管理相关命令 | P0 |
 | CLI-002 | `python aicorp.py model <subcommand> [args]` | 模型配置相关命令 | P0 |
 | CLI-003 | `python aicorp.py monitor <subcommand> [args]` | 系统监控相关命令 | P1 |
-| CLI-004 | `python aicorp.py help [command]` | 显示帮助信息 | P0 |
-| CLI-005 | `python aicorp.py version` | 显示版本信息 | P2 |
+| CLI-004 | `python aicorp.py client <client_type> [args]` | 客户端管理命令 | P0 |
+| CLI-005 | `python aicorp.py help [command]` | 显示帮助信息 | P0 |
+| CLI-006 | `python aicorp.py version` | 显示版本信息 | P2 |
 
 ### 3.2 AI 员工管理模块
 
@@ -122,6 +138,27 @@ aicorp/
 | MON-003 | `monitor tasks` | 显示当前任务进度 | P1 |
 | MON-004 | `monitor logs [--level] [--component]` | 查看系统日志 | P2 |
 
+### 3.5 客户端模块
+
+#### 3.5.1 Windows桌面客户端
+
+| 功能 ID | 命令格式 | 功能描述 | 优先级 |
+|:-------:|:--------:|:--------|:-----:|
+| WIN-001 | `client win-client [--no-gui]` | 启动Windows客户端 | P0 |
+| WIN-002 | `client win-client session create <username>` | 创建Windows会话 | P0 |
+| WIN-003 | `client win-client session list` | 列出所有Windows会话 | P0 |
+| WIN-004 | `client win-client session close <session_id>` | 关闭指定Windows会话 | P0 |
+| WIN-005 | `client win-client exec <session_id> <command>` | 在指定会话中执行命令 | P0 |
+
+#### 3.5.2 Windows客户端图形界面功能
+
+| 功能 ID | 功能描述 | 优先级 |
+|:-------:|:--------|:-----:|
+| WINGUI-001 | 会话管理面板：创建、查看和关闭会话 | P0 |
+| WINGUI-002 | 命令执行面板：在选定会话中执行命令 | P0 |
+| WINGUI-003 | 状态监控面板：显示会话状态和性能指标 | P1 |
+| WINGUI-004 | 日志查看器：查看操作日志 | P2 |
+
 ## 4. 技术规格
 
 ### 4.1 aicorp.py 主入口
@@ -152,6 +189,16 @@ aicorp/
 - **日志级别**：支持 DEBUG、INFO、WARNING、ERROR
 - **可视化**：基础的命令行可视化
 
+### 4.5 Windows客户端模块
+
+- **语言**：Python 3.9+
+- **UI框架**：PyQt5或PySide6（可配置）
+- **系统要求**：Windows 10/11
+- **权限要求**：管理员权限（用于创建和管理会话）
+- **会话管理**：基于Windows用户会话
+- **API集成**：使用pywin32与Windows API交互
+- **日志系统**：文件和控制台双重输出
+
 ## 5. 实现计划
 
 ### 5.1 第一阶段：基础框架 (1周)
@@ -172,7 +219,16 @@ aicorp/
   - 实现 vscode-augment 适配器
   - 实现 claude-code-cli 适配器
 
-### 5.3 第三阶段：系统监控 (1周)
+### 5.3 第三阶段：Windows客户端 (1周)
+
+- **目标**：实现Windows桌面会话客户端
+- **关键任务**：
+  - 开发会话管理功能
+  - 实现命令执行机制
+  - 开发基础图形界面
+  - 集成Windows API
+
+### 5.4 第四阶段：系统监控 (1周)
 
 - **目标**：实现基础系统监控功能
 - **关键任务**：
@@ -181,7 +237,7 @@ aicorp/
   - 开发简单的日志系统
   - 集成性能监控
 
-### 5.4 第四阶段：测试与优化 (1周)
+### 5.5 第五阶段：测试与优化 (1周)
 
 - **目标**：确保系统稳定性和可用性
 - **关键任务**：
@@ -228,7 +284,29 @@ python aicorp.py model set Dev2 claude-code-cli
 python aicorp.py monitor status
 ```
 
-### 7.2 添加董秘角色示例
+### 7.2 Windows客户端使用示例
+
+```bash
+# 启动Windows客户端图形界面
+python aicorp.py client win-client
+
+# 仅命令行模式启动
+python aicorp.py client win-client --no-gui
+
+# 创建Windows会话
+python aicorp.py client win-client session create dev-user
+
+# 列出所有Windows会话
+python aicorp.py client win-client session list
+
+# 在指定会话中执行命令
+python aicorp.py client win-client exec win-dev-user-0 "notepad.exe"
+
+# 关闭指定会话
+python aicorp.py client win-client session close win-dev-user-0
+```
+
+### 7.3 添加董秘角色示例
 
 ```bash
 # 添加董秘角色
@@ -240,14 +318,18 @@ python aicorp.py model set Secretary claude-code-cli
 
 ## 8. 注意事项与限制
 
-- 初期版本仅支持命令行界面，无图形界面
+- 中央系统初期版本仅支持命令行界面，Windows客户端提供基础图形界面
 - 数据存储使用本地文件，暂不支持数据库
 - 需要预先安装相关模型和工具（如 VSCode、Cursor IDE 等）
 - 系统监控功能仅提供基础指标，不支持复杂分析
 - 不同模型之间的协作机制需要进一步完善
+- Windows客户端需要管理员权限才能创建和管理用户会话
+- 初期版本仅支持Windows平台客户端，未来将扩展到其他平台
 
 ## 9. 结论
 
 AI-Corp 短期产品计划专注于构建一个实用的虚拟智能公司中控系统，通过命令行工具管理 AI 员工团队。这一系统将为未来更复杂的 AI 自举系统奠定基础，同时提供立即可用的价值。
 
 模块化的设计确保了系统的可扩展性，使我们能够逐步添加新功能和改进现有功能。通过这种渐进式的开发方法，我们可以快速交付有价值的功能，同时为长期愿景铺平道路。
+
+Windows桌面客户端的引入为管理分布式AI员工提供了关键支持，使系统能够在实际工作环境中更加灵活地部署和管理AI员工。这一客户端架构也为未来支持更多平台和环境提供了可扩展的基础。

@@ -4,7 +4,7 @@
 
 ## 项目概述
 
-本项目探索基于Computer-Use技术的AI自举进化理论框架，通过构建虚拟AI公司实现AI系统的自我改进和递归优化。
+本项目探索基于Computer-Use技术的AI自举进化理论框架，通过构建CyberCorp虚拟智能网络公司实现AI系统的自我改进和递归优化。
 
 ### 核心概念
 
@@ -15,11 +15,14 @@
 ## 项目结构
 
 - `mathematical-ai-bootstrapping.md` - 主要理论框架文档
-- `PRD-shortterm.md` - 短期产品需求文档
-- `PRD-midterm.md` - 中期产品需求文档
-- `PRD-longterm.md` - 长期产品需求文档
+- `PRD-shortterm.md` - CyberCorp短期产品需求文档
+- `PRD-midterm.md` - CyberCorp中期产品需求文档
+- `PRD-longterm.md` - CyberCorp长期产品需求文档
+- `seed/` - CyberCorp种子服务器(FastAPI+WebSocket)
+- `cybercorp/` - CyberCorp主系统目录
 - `notes/` - 相关研究笔记和参考资料
 - `backup/` - 文档历史版本备份
+- `docs/` - 工作流程和模板文档
 
 ## 理论基础
 

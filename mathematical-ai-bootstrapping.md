@@ -7,7 +7,7 @@
 - 版本：v0.1 (Draft)
 - 日期：2025年07月15日
 - 状态：这是草稿，请勿引用
-- 网址：https://github.com/wanjochan/mathematical-ai-bootstrapping/blob/main/paper.md
+- 网址：https://github.com/wanjochan/mathematical-ai-bootstrapping/blob/main/mathematical-ai-bootstrapping.md
 
 ## 摘要
 

@@ -66,11 +66,36 @@ $$I_{effective}(t) = I_{base}(t) \cdot A_{computer\_use}(t) \cdot \eta(t)$$
 
 $$\frac{dC(t)}{dt} = \alpha \cdot C(t) + \beta \cdot C(t) \cdot \log(1 + A_{computer\_use}(t)) + \gamma \cdot E(t)$$
 
+## 快速开始
+
+### CyberCorp种子服务器
+
+项目提供了一个完整的FastAPI种子服务器作为开发基础：
+
+```bash
+# 安装依赖
+cd seed && pip install -r requirements.txt
+
+# 启动服务器(开发模式，支持热重载)
+python -m seed.main
+
+# 访问API文档
+# http://localhost:8000/docs
+```
+
+### 主要特性
+
+- ✅ **Computer-Use驱动的AI自举架构** - 实现AI系统自主开发能力
+- ✅ **多Agent协作的集体智能模型** - 探索超越单体AI的智能涌现
+- ✅ **数学验证的递归改进机制** - 建立可预测、可控的AI能力增长框架
+- ✅ **高效WebSocket通信** - 实时AI员工协作支持
+- ✅ **结构化数据流处理** - 基于UI-TARS的低帧率高质量数据流
+
 ## 实现计划
 
 本项目分为短期、中期和长期三个阶段：
 
-1. **短期目标**：开发基础命令行工具，管理AI员工团队
+1. **短期目标**：开发CyberCorp基础命令行工具，管理AI员工团队
 2. **中期目标**：实现AI团队协作系统，支持自主开发流程
 3. **长期目标**：构建完整的AI自举进化系统，验证数学模型
 

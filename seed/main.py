@@ -11,7 +11,7 @@ import uvicorn
 import os
 import logging
 from .config import settings
-from .routers import api, websocket
+from .routers import api, websocket, projects
 from .core.logging_config import setup_logging
 
 # Setup logging
@@ -38,6 +38,7 @@ app.add_middleware(
 
 # Include routers
 app.include_router(api.router, prefix="/api/v1", tags=["api"])
+app.include_router(projects.router, prefix="/api/v1", tags=["projects"])
 app.include_router(websocket.router, prefix="/ws", tags=["websocket"])
 
 

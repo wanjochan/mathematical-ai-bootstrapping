@@ -41,11 +41,50 @@ class DependencyInstall(BaseModel):
     packages: List[str]
     dev: Optional[bool] = False
 
+class DependencyUninstall(BaseModel):
+    packages: List[str]
+
+class DependencyUpdate(BaseModel):
+    packages: Optional[List[str]] = None  # 如果为None则更新所有包
+    check_only: Optional[bool] = False  # 只检查更新，不实际更新
+
 class CodeTemplate(BaseModel):
     template_type: str  # 'function', 'class', 'fastapi_route', 'test_case', etc.
     language: str  # 'python', 'javascript', 'typescript', etc.
     name: str
     parameters: Optional[Dict[str, Any]] = {}
+
+# Git操作相关模型
+class GitInit(BaseModel):
+    remote_url: Optional[str] = None
+    branch: Optional[str] = "main"
+
+class GitCommit(BaseModel):
+    message: str
+    add_all: Optional[bool] = True
+    files: Optional[List[str]] = None
+
+class GitPush(BaseModel):
+    remote: Optional[str] = "origin"
+    branch: Optional[str] = None
+    force: Optional[bool] = False
+
+class GitClone(BaseModel):
+    url: str
+    project_name: Optional[str] = None
+    branch: Optional[str] = None
+
+# 代码格式化相关模型
+class FormatCode(BaseModel):
+    files: Optional[List[str]] = None  # 如果为None则格式化所有支持的文件
+    language: Optional[str] = None  # 自动检测或指定语言
+    options: Optional[Dict[str, Any]] = {}  # 格式化选项
+
+class FormatResult(BaseModel):
+    file: str
+    status: str  # 'success', 'error', 'skipped'
+    message: str
+    changes_made: bool = False
 
 class CodeSnippet(BaseModel):
     language: str
@@ -1217,4 +1256,1418 @@ async def backup_project(project_name: str, include_git: bool = False) -> Dict[s
         }
         
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to backup project: {str(e)}") 
+        raise HTTPException(status_code=500, detail=f"Failed to backup project: {str(e)}")
+
+
+# Git操作API
+@router.post("/projects/{project_name}/git/init")
+async def git_init(project_name: str, git_init: GitInit) -> Dict[str, Any]:
+    """
+    初始化Git仓库
+    """
+    try:
+        project_path = PROJECTS_ROOT / project_name
+        
+        if not project_path.exists():
+            raise HTTPException(status_code=404, detail=f"Project '{project_name}' not found")
+        
+        # 检查是否已经是git仓库
+        git_dir = project_path / ".git"
+        if git_dir.exists():
+            return {
+                "status": "warning", 
+                "message": f"Project '{project_name}' is already a Git repository"
+            }
+        
+        # 初始化git仓库
+        result = subprocess.run(
+            ["git", "init", "-b", git_init.branch],
+            cwd=project_path,
+            capture_output=True,
+            text=True,
+            timeout=30
+        )
+        
+        if result.returncode != 0:
+            raise HTTPException(status_code=500, detail=f"Git init failed: {result.stderr}")
+        
+        responses = [f"Git repository initialized with branch '{git_init.branch}'"]
+        
+        # 添加远程仓库（如果提供）
+        if git_init.remote_url:
+            remote_result = subprocess.run(
+                ["git", "remote", "add", "origin", git_init.remote_url],
+                cwd=project_path,
+                capture_output=True,
+                text=True,
+                timeout=30
+            )
+            if remote_result.returncode == 0:
+                responses.append(f"Remote 'origin' added: {git_init.remote_url}")
+            else:
+                responses.append(f"Warning: Failed to add remote: {remote_result.stderr}")
+        
+        # 创建.gitignore文件
+        gitignore_content = """# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+.env
+.venv/
+venv/
+
+# Node.js
+node_modules/
+npm-debug.log*
+*.tgz
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+"""
+        gitignore_path = project_path / ".gitignore"
+        if not gitignore_path.exists():
+            with open(gitignore_path, 'w', encoding='utf-8') as f:
+                f.write(gitignore_content)
+            responses.append("Created .gitignore file")
+        
+        return {
+            "status": "success",
+            "message": "; ".join(responses),
+            "branch": git_init.branch,
+            "remote": git_init.remote_url
+        }
+        
+    except subprocess.TimeoutExpired:
+        raise HTTPException(status_code=408, detail="Git init timeout")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to initialize Git: {str(e)}")
+
+
+@router.post("/projects/git/clone")
+async def git_clone(git_clone: GitClone) -> Dict[str, Any]:
+    """
+    克隆Git仓库
+    """
+    try:
+        # 确定项目名称
+        if git_clone.project_name:
+            project_name = git_clone.project_name
+        else:
+            # 从URL提取项目名称
+            url_parts = git_clone.url.rstrip('/').split('/')
+            project_name = url_parts[-1].replace('.git', '')
+        
+        project_path = PROJECTS_ROOT / project_name
+        
+        # 检查项目是否已存在
+        if project_path.exists():
+            raise HTTPException(status_code=400, detail=f"Project '{project_name}' already exists")
+        
+        # 构建git clone命令
+        cmd = ["git", "clone"]
+        if git_clone.branch:
+            cmd.extend(["-b", git_clone.branch])
+        cmd.extend([git_clone.url, str(project_path)])
+        
+        # 执行克隆
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            timeout=300  # 5分钟超时
+        )
+        
+        if result.returncode != 0:
+            raise HTTPException(status_code=500, detail=f"Git clone failed: {result.stderr}")
+        
+        # 创建项目配置文件
+        project_config = {
+            "name": project_name,
+            "description": f"Cloned from {git_clone.url}",
+            "template": "git_clone",
+            "created_at": datetime.utcnow().isoformat(),
+            "git": {
+                "origin_url": git_clone.url,
+                "branch": git_clone.branch or "main"
+            }
+        }
+        
+        config_file = project_path / "project.json"
+        with open(config_file, 'w', encoding='utf-8') as f:
+            json.dump(project_config, f, indent=2, ensure_ascii=False)
+        
+        return {
+            "status": "success",
+            "message": f"Repository cloned successfully",
+            "project": {
+                "name": project_name,
+                "path": str(project_path),
+                "url": git_clone.url,
+                "branch": git_clone.branch
+            }
+        }
+        
+    except subprocess.TimeoutExpired:
+        raise HTTPException(status_code=408, detail="Git clone timeout")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to clone repository: {str(e)}")
+
+
+@router.get("/projects/{project_name}/git/status")
+async def git_status(project_name: str) -> Dict[str, Any]:
+    """
+    查看Git状态
+    """
+    try:
+        project_path = PROJECTS_ROOT / project_name
+        
+        if not project_path.exists():
+            raise HTTPException(status_code=404, detail=f"Project '{project_name}' not found")
+        
+        # 检查是否为git仓库
+        git_dir = project_path / ".git"
+        if not git_dir.exists():
+            raise HTTPException(status_code=400, detail=f"Project '{project_name}' is not a Git repository")
+        
+        # 获取git状态
+        status_result = subprocess.run(
+            ["git", "status", "--porcelain"],
+            cwd=project_path,
+            capture_output=True,
+            text=True,
+            timeout=30
+        )
+        
+        if status_result.returncode != 0:
+            raise HTTPException(status_code=500, detail=f"Git status failed: {status_result.stderr}")
+        
+        # 获取当前分支
+        branch_result = subprocess.run(
+            ["git", "branch", "--show-current"],
+            cwd=project_path,
+            capture_output=True,
+            text=True,
+            timeout=30
+        )
+        
+        current_branch = branch_result.stdout.strip() if branch_result.returncode == 0 else "unknown"
+        
+        # 解析状态
+        status_lines = status_result.stdout.strip().split('\n') if status_result.stdout.strip() else []
+        
+        modified = []
+        added = []
+        deleted = []
+        untracked = []
+        
+        for line in status_lines:
+            if len(line) >= 3:
+                status_code = line[:2]
+                filename = line[3:]
+                
+                if status_code == "??":
+                    untracked.append(filename)
+                elif status_code[0] == "M" or status_code[1] == "M":
+                    modified.append(filename)
+                elif status_code[0] == "A" or status_code[1] == "A":
+                    added.append(filename)
+                elif status_code[0] == "D" or status_code[1] == "D":
+                    deleted.append(filename)
+        
+        # 获取远程信息
+        remote_result = subprocess.run(
+            ["git", "remote", "-v"],
+            cwd=project_path,
+            capture_output=True,
+            text=True,
+            timeout=30
+        )
+        
+        remotes = {}
+        if remote_result.returncode == 0:
+            for line in remote_result.stdout.strip().split('\n'):
+                if line:
+                    parts = line.split()
+                    if len(parts) >= 2:
+                        remote_name = parts[0]
+                        remote_url = parts[1]
+                        remotes[remote_name] = remote_url
+        
+        return {
+            "status": "success",
+            "git_status": {
+                "branch": current_branch,
+                "clean": len(status_lines) == 0,
+                "files": {
+                    "modified": modified,
+                    "added": added,
+                    "deleted": deleted,
+                    "untracked": untracked
+                },
+                "remotes": remotes
+            }
+        }
+        
+    except subprocess.TimeoutExpired:
+        raise HTTPException(status_code=408, detail="Git status timeout")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get Git status: {str(e)}")
+
+
+@router.post("/projects/{project_name}/git/add")
+async def git_add(project_name: str, files: Optional[List[str]] = None) -> Dict[str, Any]:
+    """
+    添加文件到Git暂存区
+    """
+    try:
+        project_path = PROJECTS_ROOT / project_name
+        
+        if not project_path.exists():
+            raise HTTPException(status_code=404, detail=f"Project '{project_name}' not found")
+        
+        # 检查是否为git仓库
+        git_dir = project_path / ".git"
+        if not git_dir.exists():
+            raise HTTPException(status_code=400, detail=f"Project '{project_name}' is not a Git repository")
+        
+        # 构建git add命令
+        cmd = ["git", "add"]
+        if files:
+            # 添加指定文件
+            cmd.extend(files)
+            message = f"Added {len(files)} file(s) to staging area"
+        else:
+            # 添加所有文件
+            cmd.append(".")
+            message = "Added all files to staging area"
+        
+        # 执行添加
+        result = subprocess.run(
+            cmd,
+            cwd=project_path,
+            capture_output=True,
+            text=True,
+            timeout=60
+        )
+        
+        if result.returncode != 0:
+            raise HTTPException(status_code=500, detail=f"Git add failed: {result.stderr}")
+        
+        return {
+            "status": "success",
+            "message": message,
+            "files": files or ["all files"]
+        }
+        
+    except subprocess.TimeoutExpired:
+        raise HTTPException(status_code=408, detail="Git add timeout")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to add files: {str(e)}")
+
+
+@router.post("/projects/{project_name}/git/commit")
+async def git_commit(project_name: str, commit_data: GitCommit) -> Dict[str, Any]:
+    """
+    提交更改到Git仓库
+    """
+    try:
+        project_path = PROJECTS_ROOT / project_name
+        
+        if not project_path.exists():
+            raise HTTPException(status_code=404, detail=f"Project '{project_name}' not found")
+        
+        # 检查是否为git仓库
+        git_dir = project_path / ".git"
+        if not git_dir.exists():
+            raise HTTPException(status_code=400, detail=f"Project '{project_name}' is not a Git repository")
+        
+        # 如果需要，先添加文件
+        if commit_data.add_all:
+            add_result = subprocess.run(
+                ["git", "add", "."],
+                cwd=project_path,
+                capture_output=True,
+                text=True,
+                timeout=60
+            )
+            if add_result.returncode != 0:
+                raise HTTPException(status_code=500, detail=f"Git add failed: {add_result.stderr}")
+        elif commit_data.files:
+            cmd = ["git", "add"] + commit_data.files
+            add_result = subprocess.run(
+                cmd,
+                cwd=project_path,
+                capture_output=True,
+                text=True,
+                timeout=60
+            )
+            if add_result.returncode != 0:
+                raise HTTPException(status_code=500, detail=f"Git add failed: {add_result.stderr}")
+        
+        # 提交更改
+        commit_result = subprocess.run(
+            ["git", "commit", "-m", commit_data.message],
+            cwd=project_path,
+            capture_output=True,
+            text=True,
+            timeout=60
+        )
+        
+        if commit_result.returncode != 0:
+            # 检查是否是"nothing to commit"的情况
+            if "nothing to commit" in commit_result.stdout:
+                return {
+                    "status": "warning",
+                    "message": "Nothing to commit, working tree clean"
+                }
+            else:
+                raise HTTPException(status_code=500, detail=f"Git commit failed: {commit_result.stderr}")
+        
+        # 获取commit信息
+        log_result = subprocess.run(
+            ["git", "log", "-1", "--oneline"],
+            cwd=project_path,
+            capture_output=True,
+            text=True,
+            timeout=30
+        )
+        
+        commit_info = log_result.stdout.strip() if log_result.returncode == 0 else "unknown"
+        
+        return {
+            "status": "success",
+            "message": f"Changes committed successfully",
+            "commit": {
+                "message": commit_data.message,
+                "info": commit_info
+            }
+        }
+        
+    except subprocess.TimeoutExpired:
+        raise HTTPException(status_code=408, detail="Git commit timeout")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to commit changes: {str(e)}")
+
+
+@router.post("/projects/{project_name}/git/push")
+async def git_push(project_name: str, push_data: GitPush) -> Dict[str, Any]:
+    """
+    推送更改到远程仓库
+    """
+    try:
+        project_path = PROJECTS_ROOT / project_name
+        
+        if not project_path.exists():
+            raise HTTPException(status_code=404, detail=f"Project '{project_name}' not found")
+        
+        # 检查是否为git仓库
+        git_dir = project_path / ".git"
+        if not git_dir.exists():
+            raise HTTPException(status_code=400, detail=f"Project '{project_name}' is not a Git repository")
+        
+        # 获取当前分支（如果没有指定）
+        if not push_data.branch:
+            branch_result = subprocess.run(
+                ["git", "branch", "--show-current"],
+                cwd=project_path,
+                capture_output=True,
+                text=True,
+                timeout=30
+            )
+            if branch_result.returncode == 0 and branch_result.stdout.strip():
+                push_data.branch = branch_result.stdout.strip()
+            else:
+                push_data.branch = "main"
+        
+        # 构建push命令
+        cmd = ["git", "push"]
+        if push_data.force:
+            cmd.append("--force")
+        cmd.extend([push_data.remote, push_data.branch])
+        
+        # 执行推送
+        result = subprocess.run(
+            cmd,
+            cwd=project_path,
+            capture_output=True,
+            text=True,
+            timeout=300  # 5分钟超时
+        )
+        
+        if result.returncode != 0:
+            raise HTTPException(status_code=500, detail=f"Git push failed: {result.stderr}")
+        
+        return {
+            "status": "success",
+            "message": f"Successfully pushed to {push_data.remote}/{push_data.branch}",
+            "push": {
+                "remote": push_data.remote,
+                "branch": push_data.branch,
+                "force": push_data.force,
+                "output": result.stdout
+            }
+        }
+        
+    except subprocess.TimeoutExpired:
+        raise HTTPException(status_code=408, detail="Git push timeout")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to push changes: {str(e)}")
+
+
+@router.get("/projects/{project_name}/git/log")
+async def git_log(project_name: str, limit: int = 10) -> Dict[str, Any]:
+    """
+    查看Git提交历史
+    """
+    try:
+        project_path = PROJECTS_ROOT / project_name
+        
+        if not project_path.exists():
+            raise HTTPException(status_code=404, detail=f"Project '{project_name}' not found")
+        
+        # 检查是否为git仓库
+        git_dir = project_path / ".git"
+        if not git_dir.exists():
+            raise HTTPException(status_code=400, detail=f"Project '{project_name}' is not a Git repository")
+        
+        # 获取提交历史
+        result = subprocess.run(
+            ["git", "log", f"--max-count={limit}", "--pretty=format:%H|%an|%ae|%ad|%s", "--date=iso"],
+            cwd=project_path,
+            capture_output=True,
+            text=True,
+            timeout=60
+        )
+        
+        if result.returncode != 0:
+            raise HTTPException(status_code=500, detail=f"Git log failed: {result.stderr}")
+        
+        commits = []
+        for line in result.stdout.strip().split('\n'):
+            if line:
+                parts = line.split('|', 4)
+                if len(parts) == 5:
+                    commits.append({
+                        "hash": parts[0],
+                        "author_name": parts[1],
+                        "author_email": parts[2],
+                        "date": parts[3],
+                        "message": parts[4]
+                    })
+        
+        return {
+            "status": "success",
+            "commits": commits,
+            "total": len(commits)
+        }
+        
+    except subprocess.TimeoutExpired:
+        raise HTTPException(status_code=408, detail="Git log timeout")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get Git log: {str(e)}")
+
+
+# 代码格式化API
+@router.post("/projects/{project_name}/format")
+async def format_code(project_name: str, format_request: FormatCode) -> Dict[str, Any]:
+    """
+    格式化项目中的代码文件
+    """
+    try:
+        project_path = PROJECTS_ROOT / project_name
+        
+        if not project_path.exists():
+            raise HTTPException(status_code=404, detail=f"Project '{project_name}' not found")
+        
+        # 定义支持的文件类型和对应的格式化工具
+        formatters = {
+            '.py': {
+                'tool': 'black',
+                'command': ['python', '-m', 'black'],
+                'check_cmd': ['python', '-c', 'import black; print("black available")']
+            },
+            '.js': {
+                'tool': 'prettier',
+                'command': ['npx', 'prettier', '--write'],
+                'check_cmd': ['npx', 'prettier', '--version']
+            },
+            '.ts': {
+                'tool': 'prettier',
+                'command': ['npx', 'prettier', '--write'],
+                'check_cmd': ['npx', 'prettier', '--version']
+            },
+            '.json': {
+                'tool': 'prettier',
+                'command': ['npx', 'prettier', '--write'],
+                'check_cmd': ['npx', 'prettier', '--version']
+            },
+            '.html': {
+                'tool': 'prettier',
+                'command': ['npx', 'prettier', '--write'],
+                'check_cmd': ['npx', 'prettier', '--version']
+            },
+            '.css': {
+                'tool': 'prettier',
+                'command': ['npx', 'prettier', '--write'],
+                'check_cmd': ['npx', 'prettier', '--version']
+            }
+        }
+        
+        results = []
+        files_to_format = []
+        
+        # 确定要格式化的文件
+        if format_request.files:
+            # 使用指定的文件列表
+            for file_path in format_request.files:
+                full_path = project_path / file_path
+                if full_path.exists() and full_path.is_file():
+                    files_to_format.append(full_path)
+                else:
+                    results.append({
+                        "file": file_path,
+                        "status": "error",
+                        "message": f"File not found: {file_path}",
+                        "changes_made": False
+                    })
+        else:
+            # 自动发现支持的文件类型
+            for ext in formatters.keys():
+                for file_path in project_path.rglob(f"*{ext}"):
+                    # 跳过常见的忽略目录
+                    if any(part in ['.git', '__pycache__', 'node_modules', '.pytest_cache', '.venv'] 
+                           for part in file_path.parts):
+                        continue
+                    files_to_format.append(file_path)
+        
+        if not files_to_format:
+            return {
+                "status": "warning",
+                "message": "No supported files found for formatting",
+                "results": [],
+                "total_files": 0,
+                "successful": 0,
+                "failed": 0
+            }
+        
+        # 按文件类型分组并格式化
+        formatter_availability = {}
+        
+        for file_path in files_to_format:
+            file_ext = file_path.suffix.lower()
+            relative_path = str(file_path.relative_to(project_path))
+            
+            if file_ext not in formatters:
+                results.append({
+                    "file": relative_path,
+                    "status": "skipped",
+                    "message": f"Unsupported file type: {file_ext}",
+                    "changes_made": False
+                })
+                continue
+            
+            formatter_config = formatters[file_ext]
+            tool_name = formatter_config['tool']
+            
+            # 检查格式化工具是否可用（缓存结果）
+            if tool_name not in formatter_availability:
+                try:
+                    check_result = subprocess.run(
+                        formatter_config['check_cmd'],
+                        cwd=project_path,
+                        capture_output=True,
+                        text=True,
+                        timeout=10
+                    )
+                    formatter_availability[tool_name] = check_result.returncode == 0
+                except:
+                    formatter_availability[tool_name] = False
+            
+            if not formatter_availability[tool_name]:
+                results.append({
+                    "file": relative_path,
+                    "status": "error",
+                    "message": f"Formatter '{tool_name}' not available. Please install it first.",
+                    "changes_made": False
+                })
+                continue
+            
+            # 读取文件内容（用于检查是否有变化）
+            try:
+                with open(file_path, 'r', encoding='utf-8') as f:
+                    original_content = f.read()
+            except Exception as e:
+                results.append({
+                    "file": relative_path,
+                    "status": "error", 
+                    "message": f"Failed to read file: {str(e)}",
+                    "changes_made": False
+                })
+                continue
+            
+            # 执行格式化
+            try:
+                cmd = formatter_config['command'] + [str(file_path)]
+                
+                # 添加用户指定的选项
+                if format_request.options:
+                    if tool_name == 'black':
+                        if 'line_length' in format_request.options:
+                            cmd.extend(['--line-length', str(format_request.options['line_length'])])
+                        if 'skip_string_normalization' in format_request.options:
+                            if format_request.options['skip_string_normalization']:
+                                cmd.append('--skip-string-normalization')
+                    elif tool_name == 'prettier':
+                        if 'tab_width' in format_request.options:
+                            cmd.extend(['--tab-width', str(format_request.options['tab_width'])])
+                        if 'use_tabs' in format_request.options:
+                            cmd.extend(['--use-tabs', str(format_request.options['use_tabs']).lower()])
+                
+                result = subprocess.run(
+                    cmd,
+                    cwd=project_path,
+                    capture_output=True,
+                    text=True,
+                    timeout=60
+                )
+                
+                if result.returncode == 0:
+                    # 检查文件是否有变化
+                    try:
+                        with open(file_path, 'r', encoding='utf-8') as f:
+                            new_content = f.read()
+                        changes_made = original_content != new_content
+                    except:
+                        changes_made = True  # 假设有变化，如果无法检测
+                    
+                    results.append({
+                        "file": relative_path,
+                        "status": "success",
+                        "message": f"Formatted with {tool_name}" + (" (changes made)" if changes_made else " (no changes needed)"),
+                        "changes_made": changes_made
+                    })
+                else:
+                    results.append({
+                        "file": relative_path,
+                        "status": "error",
+                        "message": f"Formatting failed: {result.stderr.strip() or result.stdout.strip()}",
+                        "changes_made": False
+                    })
+            
+            except subprocess.TimeoutExpired:
+                results.append({
+                    "file": relative_path,
+                    "status": "error",
+                    "message": "Formatting timeout",
+                    "changes_made": False
+                })
+            except Exception as e:
+                results.append({
+                    "file": relative_path,
+                    "status": "error",
+                    "message": f"Formatting error: {str(e)}",
+                    "changes_made": False
+                })
+        
+        # 统计结果
+        successful = len([r for r in results if r["status"] == "success"])
+        failed = len([r for r in results if r["status"] == "error"])
+        skipped = len([r for r in results if r["status"] == "skipped"])
+        changes_made = len([r for r in results if r["changes_made"]])
+        
+        return {
+            "status": "success" if failed == 0 else "partial",
+            "message": f"Formatted {successful} files successfully, {failed} failed, {skipped} skipped",
+            "results": results,
+            "summary": {
+                "total_files": len(results),
+                "successful": successful,
+                "failed": failed,
+                "skipped": skipped,
+                "changes_made": changes_made
+            },
+            "available_formatters": {
+                tool: available for tool, available in formatter_availability.items()
+            }
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to format code: {str(e)}")
+
+
+@router.get("/projects/{project_name}/format/check")
+async def check_formatters(project_name: str) -> Dict[str, Any]:
+    """
+    检查可用的代码格式化工具
+    """
+    try:
+        project_path = PROJECTS_ROOT / project_name
+        
+        if not project_path.exists():
+            raise HTTPException(status_code=404, detail=f"Project '{project_name}' not found")
+        
+        formatters = {
+            'black': {
+                'description': 'Python code formatter',
+                'install_cmd': 'pip install black',
+                'check_cmd': ['python', '-c', 'import black; print(black.__version__)']
+            },
+            'prettier': {
+                'description': 'JavaScript/TypeScript/JSON/HTML/CSS formatter',
+                'install_cmd': 'npm install -g prettier',
+                'check_cmd': ['npx', 'prettier', '--version']
+            }
+        }
+        
+        status = {}
+        
+        for tool_name, config in formatters.items():
+            try:
+                result = subprocess.run(
+                    config['check_cmd'],
+                    cwd=project_path,
+                    capture_output=True,
+                    text=True,
+                    timeout=10
+                )
+                
+                if result.returncode == 0:
+                    version = result.stdout.strip()
+                    status[tool_name] = {
+                        "available": True,
+                        "version": version,
+                        "description": config['description']
+                    }
+                else:
+                    status[tool_name] = {
+                        "available": False,
+                        "error": result.stderr.strip() or "Command failed",
+                        "description": config['description'],
+                        "install_cmd": config['install_cmd']
+                    }
+            except subprocess.TimeoutExpired:
+                status[tool_name] = {
+                    "available": False,
+                    "error": "Check timeout",
+                    "description": config['description'],
+                    "install_cmd": config['install_cmd']
+                }
+            except Exception as e:
+                status[tool_name] = {
+                    "available": False,
+                    "error": str(e),
+                    "description": config['description'],
+                    "install_cmd": config['install_cmd']
+                }
+        
+        available_count = len([s for s in status.values() if s["available"]])
+        
+        return {
+            "status": "success",
+            "message": f"{available_count}/{len(formatters)} formatters available",
+            "formatters": status,
+            "supported_extensions": {
+                "black": [".py"],
+                "prettier": [".js", ".ts", ".json", ".html", ".css"]
+            }
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to check formatters: {str(e)}")
+
+
+@router.post("/projects/{project_name}/format/install")
+async def install_formatters(project_name: str, tools: List[str]) -> Dict[str, Any]:
+    """
+    安装代码格式化工具
+    """
+    try:
+        project_path = PROJECTS_ROOT / project_name
+        
+        if not project_path.exists():
+            raise HTTPException(status_code=404, detail=f"Project '{project_name}' not found")
+        
+        install_commands = {
+            'black': ['python', '-m', 'pip', 'install', 'black'],
+            'prettier': ['npm', 'install', '-g', 'prettier']
+        }
+        
+        results = []
+        
+        for tool in tools:
+            if tool not in install_commands:
+                results.append({
+                    "tool": tool,
+                    "status": "error",
+                    "message": f"Unknown formatter: {tool}"
+                })
+                continue
+            
+            try:
+                cmd = install_commands[tool]
+                result = subprocess.run(
+                    cmd,
+                    cwd=project_path,
+                    capture_output=True,
+                    text=True,
+                    timeout=300  # 5分钟超时
+                )
+                
+                if result.returncode == 0:
+                    results.append({
+                        "tool": tool,
+                        "status": "success",
+                        "message": f"{tool} installed successfully",
+                        "output": result.stdout
+                    })
+                else:
+                    results.append({
+                        "tool": tool,
+                        "status": "error",
+                        "message": f"Installation failed: {result.stderr}",
+                        "output": result.stdout
+                    })
+                    
+            except subprocess.TimeoutExpired:
+                results.append({
+                    "tool": tool,
+                    "status": "error",
+                    "message": "Installation timeout"
+                })
+            except Exception as e:
+                results.append({
+                    "tool": tool,
+                    "status": "error",
+                    "message": f"Installation error: {str(e)}"
+                })
+        
+        successful = len([r for r in results if r["status"] == "success"])
+        failed = len([r for r in results if r["status"] == "error"])
+        
+        return {
+            "status": "success" if failed == 0 else "partial",
+            "message": f"Installed {successful}/{len(tools)} formatters successfully",
+            "results": results
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to install formatters: {str(e)}")
+
+
+# 扩展依赖管理API
+@router.post("/projects/{project_name}/dependencies/uninstall")
+async def uninstall_dependencies(project_name: str, dependencies: DependencyUninstall) -> Dict[str, Any]:
+    """
+    卸载项目依赖
+    """
+    try:
+        project_path = PROJECTS_ROOT / project_name
+        
+        if not project_path.exists():
+            raise HTTPException(status_code=404, detail=f"Project '{project_name}' not found")
+        
+        # 检查项目类型
+        requirements_file = project_path / "requirements.txt"
+        package_json = project_path / "package.json"
+        is_python_project = requirements_file.exists() or (project_path / "setup.py").exists()
+        is_node_project = package_json.exists()
+        
+        if not (is_python_project or is_node_project):
+            raise HTTPException(
+                status_code=400, 
+                detail="Unsupported project type. Only Python and Node.js projects are supported."
+            )
+        
+        results = []
+        
+        for package in dependencies.packages:
+            try:
+                if is_python_project:
+                    cmd = ["pip", "uninstall", package, "-y"]
+                else:  # Node.js project
+                    cmd = ["npm", "uninstall", package]
+                
+                result = subprocess.run(
+                    cmd,
+                    cwd=project_path,
+                    capture_output=True,
+                    text=True,
+                    timeout=120
+                )
+                
+                if result.returncode == 0:
+                    results.append({
+                        "package": package,
+                        "status": "success",
+                        "message": f"Successfully uninstalled {package}",
+                        "output": result.stdout
+                    })
+                    
+                    # 从项目配置中移除
+                    config_file = project_path / "project.json"
+                    if config_file.exists():
+                        with open(config_file, 'r', encoding='utf-8') as f:
+                            project_config = json.load(f)
+                        
+                        deps = project_config.get("dependencies", [])
+                        if package in deps:
+                            deps.remove(package)
+                            project_config["dependencies"] = deps
+                            
+                            with open(config_file, 'w', encoding='utf-8') as f:
+                                json.dump(project_config, f, indent=2, ensure_ascii=False)
+                else:
+                    results.append({
+                        "package": package,
+                        "status": "error",
+                        "message": f"Failed to uninstall {package}: {result.stderr}",
+                        "output": result.stdout
+                    })
+            
+            except subprocess.TimeoutExpired:
+                results.append({
+                    "package": package,
+                    "status": "error",
+                    "message": f"Uninstall timeout for {package}"
+                })
+            except Exception as e:
+                results.append({
+                    "package": package,
+                    "status": "error",
+                    "message": f"Uninstall error for {package}: {str(e)}"
+                })
+        
+        successful = len([r for r in results if r["status"] == "success"])
+        failed = len([r for r in results if r["status"] == "error"])
+        
+        return {
+            "status": "success" if failed == 0 else "partial",
+            "message": f"Uninstalled {successful}/{len(dependencies.packages)} packages successfully",
+            "results": results
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to uninstall dependencies: {str(e)}")
+
+
+@router.post("/projects/{project_name}/dependencies/update")
+async def update_dependencies(project_name: str, update_request: DependencyUpdate) -> Dict[str, Any]:
+    """
+    更新项目依赖
+    """
+    try:
+        project_path = PROJECTS_ROOT / project_name
+        
+        if not project_path.exists():
+            raise HTTPException(status_code=404, detail=f"Project '{project_name}' not found")
+        
+        # 检查项目类型
+        requirements_file = project_path / "requirements.txt"
+        package_json = project_path / "package.json"
+        is_python_project = requirements_file.exists() or (project_path / "setup.py").exists()
+        is_node_project = package_json.exists()
+        
+        if not (is_python_project or is_node_project):
+            raise HTTPException(
+                status_code=400, 
+                detail="Unsupported project type. Only Python and Node.js projects are supported."
+            )
+        
+        results = []
+        packages_to_update = update_request.packages or []
+        
+        # 如果没有指定包，则获取所有已安装的包
+        if not packages_to_update:
+            if is_python_project:
+                # 从requirements.txt读取
+                if requirements_file.exists():
+                    with open(requirements_file, 'r') as f:
+                        for line in f:
+                            line = line.strip()
+                            if line and not line.startswith('#'):
+                                # 提取包名（去除版本号）
+                                package_name = line.split('==')[0].split('>=')[0].split('<=')[0].split('>')[0].split('<')[0]
+                                packages_to_update.append(package_name)
+            else:  # Node.js
+                # 从package.json读取
+                if package_json.exists():
+                    with open(package_json, 'r') as f:
+                        package_data = json.load(f)
+                        deps = package_data.get("dependencies", {})
+                        dev_deps = package_data.get("devDependencies", {})
+                        packages_to_update.extend(list(deps.keys()) + list(dev_deps.keys()))
+        
+        if not packages_to_update:
+            return {
+                "status": "warning",
+                "message": "No packages found to update",
+                "results": []
+            }
+        
+        if update_request.check_only:
+            # 只检查可用更新，不实际更新
+            if is_python_project:
+                cmd = ["pip", "list", "--outdated", "--format=json"]
+            else:
+                cmd = ["npm", "outdated", "--json"]
+            
+            try:
+                result = subprocess.run(
+                    cmd,
+                    cwd=project_path,
+                    capture_output=True,
+                    text=True,
+                    timeout=60
+                )
+                
+                if result.returncode == 0:
+                    if is_python_project:
+                        outdated = json.loads(result.stdout) if result.stdout.strip() else []
+                        outdated_packages = {pkg["name"]: {"current": pkg["version"], "latest": pkg["latest_version"]} 
+                                           for pkg in outdated if pkg["name"] in packages_to_update}
+                    else:
+                        outdated_data = json.loads(result.stdout) if result.stdout.strip() else {}
+                        outdated_packages = {name: {"current": info.get("current"), "latest": info.get("wanted")} 
+                                           for name, info in outdated_data.items() if name in packages_to_update}
+                    
+                    return {
+                        "status": "success",
+                        "message": f"Found {len(outdated_packages)} packages with available updates",
+                        "outdated_packages": outdated_packages,
+                        "check_only": True
+                    }
+                else:
+                    return {
+                        "status": "error",
+                        "message": f"Failed to check for updates: {result.stderr}",
+                        "check_only": True
+                    }
+            except Exception as e:
+                return {
+                    "status": "error",
+                    "message": f"Failed to check for updates: {str(e)}",
+                    "check_only": True
+                }
+        
+        # 实际更新包
+        for package in packages_to_update:
+            try:
+                if is_python_project:
+                    cmd = ["pip", "install", "--upgrade", package]
+                else:
+                    cmd = ["npm", "update", package]
+                
+                result = subprocess.run(
+                    cmd,
+                    cwd=project_path,
+                    capture_output=True,
+                    text=True,
+                    timeout=300
+                )
+                
+                if result.returncode == 0:
+                    results.append({
+                        "package": package,
+                        "status": "success",
+                        "message": f"Successfully updated {package}",
+                        "output": result.stdout
+                    })
+                else:
+                    results.append({
+                        "package": package,
+                        "status": "error",
+                        "message": f"Failed to update {package}: {result.stderr}",
+                        "output": result.stdout
+                    })
+            
+            except subprocess.TimeoutExpired:
+                results.append({
+                    "package": package,
+                    "status": "error",
+                    "message": f"Update timeout for {package}"
+                })
+            except Exception as e:
+                results.append({
+                    "package": package,
+                    "status": "error",
+                    "message": f"Update error for {package}: {str(e)}"
+                })
+        
+        successful = len([r for r in results if r["status"] == "success"])
+        failed = len([r for r in results if r["status"] == "error"])
+        
+        return {
+            "status": "success" if failed == 0 else "partial",
+            "message": f"Updated {successful}/{len(packages_to_update)} packages successfully",
+            "results": results
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to update dependencies: {str(e)}")
+
+
+@router.get("/projects/{project_name}/dependencies/list")
+async def list_project_dependencies(project_name: str, include_dev: bool = True) -> Dict[str, Any]:
+    """
+    列出项目依赖详细信息
+    """
+    try:
+        project_path = PROJECTS_ROOT / project_name
+        
+        if not project_path.exists():
+            raise HTTPException(status_code=404, detail=f"Project '{project_name}' not found")
+        
+        dependencies = {}
+        
+        # 检查Python项目
+        requirements_file = project_path / "requirements.txt"
+        if requirements_file.exists():
+            dependencies["python"] = {
+                "type": "Python",
+                "file": "requirements.txt",
+                "packages": []
+            }
+            
+            with open(requirements_file, 'r') as f:
+                for line in f:
+                    line = line.strip()
+                    if line and not line.startswith('#'):
+                        dependencies["python"]["packages"].append(line)
+        
+        # 检查Node.js项目
+        package_json = project_path / "package.json"
+        if package_json.exists():
+            with open(package_json, 'r') as f:
+                package_data = json.load(f)
+            
+            dependencies["nodejs"] = {
+                "type": "Node.js",
+                "file": "package.json",
+                "dependencies": package_data.get("dependencies", {}),
+                "devDependencies": package_data.get("devDependencies", {}) if include_dev else {}
+            }
+        
+        # 获取已安装包的详细信息
+        installed_info = {}
+        
+        # Python包信息
+        if "python" in dependencies:
+            try:
+                result = subprocess.run(
+                    ["pip", "list", "--format=json"],
+                    cwd=project_path,
+                    capture_output=True,
+                    text=True,
+                    timeout=30
+                )
+                if result.returncode == 0:
+                    installed_packages = json.loads(result.stdout)
+                    installed_info["python"] = {pkg["name"]: pkg["version"] for pkg in installed_packages}
+            except:
+                installed_info["python"] = {}
+        
+        # Node.js包信息
+        if "nodejs" in dependencies:
+            try:
+                result = subprocess.run(
+                    ["npm", "list", "--json", "--depth=0"],
+                    cwd=project_path,
+                    capture_output=True,
+                    text=True,
+                    timeout=30
+                )
+                if result.returncode == 0:
+                    npm_data = json.loads(result.stdout)
+                    installed_info["nodejs"] = npm_data.get("dependencies", {})
+            except:
+                installed_info["nodejs"] = {}
+        
+        return {
+            "status": "success",
+            "project_name": project_name,
+            "dependencies": dependencies,
+            "installed": installed_info,
+            "summary": {
+                "has_python": "python" in dependencies,
+                "has_nodejs": "nodejs" in dependencies,
+                "python_count": len(dependencies.get("python", {}).get("packages", [])),
+                "nodejs_count": len(dependencies.get("nodejs", {}).get("dependencies", {})),
+                "nodejs_dev_count": len(dependencies.get("nodejs", {}).get("devDependencies", {}))
+            }
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to list dependencies: {str(e)}")
+
+
+@router.get("/projects/{project_name}/dependencies/check")
+async def check_dependency_health(project_name: str) -> Dict[str, Any]:
+    """
+    检查依赖健康状况（安全漏洞、过时版本等）
+    """
+    try:
+        project_path = PROJECTS_ROOT / project_name
+        
+        if not project_path.exists():
+            raise HTTPException(status_code=404, detail=f"Project '{project_name}' not found")
+        
+        health_report = {}
+        
+        # Python安全检查
+        requirements_file = project_path / "requirements.txt"
+        if requirements_file.exists():
+            try:
+                # 检查安全漏洞（如果安装了safety）
+                safety_result = subprocess.run(
+                    ["python", "-m", "safety", "check", "--json"],
+                    cwd=project_path,
+                    capture_output=True,
+                    text=True,
+                    timeout=60
+                )
+                
+                if safety_result.returncode == 0:
+                    vulnerabilities = json.loads(safety_result.stdout) if safety_result.stdout.strip() else []
+                    health_report["python_security"] = {
+                        "vulnerabilities": vulnerabilities,
+                        "vulnerable_count": len(vulnerabilities),
+                        "status": "secure" if len(vulnerabilities) == 0 else "vulnerable"
+                    }
+                else:
+                    health_report["python_security"] = {
+                        "status": "check_failed",
+                        "error": "Safety tool not available or failed"
+                    }
+            except:
+                health_report["python_security"] = {
+                    "status": "not_available",
+                    "message": "Install 'safety' package to enable security checks"
+                }
+        
+        # Node.js安全检查
+        package_json = project_path / "package.json"
+        if package_json.exists():
+            try:
+                audit_result = subprocess.run(
+                    ["npm", "audit", "--json"],
+                    cwd=project_path,
+                    capture_output=True,
+                    text=True,
+                    timeout=60
+                )
+                
+                if audit_result.returncode in [0, 1]:  # 0 = no vulnerabilities, 1 = vulnerabilities found
+                    audit_data = json.loads(audit_result.stdout) if audit_result.stdout.strip() else {}
+                    vulnerabilities = audit_data.get("vulnerabilities", {})
+                    health_report["nodejs_security"] = {
+                        "vulnerabilities": vulnerabilities,
+                        "vulnerable_count": len(vulnerabilities),
+                        "status": "secure" if len(vulnerabilities) == 0 else "vulnerable",
+                        "metadata": audit_data.get("metadata", {})
+                    }
+                else:
+                    health_report["nodejs_security"] = {
+                        "status": "check_failed",
+                        "error": audit_result.stderr
+                    }
+            except:
+                health_report["nodejs_security"] = {
+                    "status": "check_failed",
+                    "error": "npm audit failed"
+                }
+        
+        # 检查过时的包
+        outdated_info = {}
+        
+        # Python过时检查
+        if requirements_file.exists():
+            try:
+                result = subprocess.run(
+                    ["pip", "list", "--outdated", "--format=json"],
+                    cwd=project_path,
+                    capture_output=True,
+                    text=True,
+                    timeout=30
+                )
+                if result.returncode == 0:
+                    outdated_packages = json.loads(result.stdout) if result.stdout.strip() else []
+                    outdated_info["python"] = {
+                        "outdated_packages": outdated_packages,
+                        "count": len(outdated_packages)
+                    }
+            except:
+                outdated_info["python"] = {"status": "check_failed"}
+        
+        # Node.js过时检查
+        if package_json.exists():
+            try:
+                result = subprocess.run(
+                    ["npm", "outdated", "--json"],
+                    cwd=project_path,
+                    capture_output=True,
+                    text=True,
+                    timeout=30
+                )
+                # npm outdated returns exit code 1 when outdated packages are found
+                if result.returncode in [0, 1]:
+                    outdated_packages = json.loads(result.stdout) if result.stdout.strip() else {}
+                    outdated_info["nodejs"] = {
+                        "outdated_packages": outdated_packages,
+                        "count": len(outdated_packages)
+                    }
+            except:
+                outdated_info["nodejs"] = {"status": "check_failed"}
+        
+        # 总体健康评分
+        total_vulnerabilities = 0
+        total_outdated = 0
+        
+        if "python_security" in health_report:
+            total_vulnerabilities += health_report["python_security"].get("vulnerable_count", 0)
+        if "nodejs_security" in health_report:
+            total_vulnerabilities += health_report["nodejs_security"].get("vulnerable_count", 0)
+        
+        for platform in outdated_info.values():
+            if isinstance(platform, dict) and "count" in platform:
+                total_outdated += platform["count"]
+        
+        # 计算健康评分 (0-100)
+        health_score = 100
+        health_score -= min(total_vulnerabilities * 20, 80)  # 每个漏洞扣20分，最多扣80分
+        health_score -= min(total_outdated * 2, 20)  # 每个过时包扣2分，最多扣20分
+        health_score = max(health_score, 0)
+        
+        return {
+            "status": "success",
+            "health_score": health_score,
+            "summary": {
+                "total_vulnerabilities": total_vulnerabilities,
+                "total_outdated": total_outdated,
+                "overall_status": "healthy" if health_score >= 80 else "needs_attention" if health_score >= 50 else "critical"
+            },
+            "security": health_report,
+            "outdated": outdated_info,
+            "recommendations": [
+                "Update outdated packages to latest versions",
+                "Fix security vulnerabilities immediately",
+                "Consider using dependency management tools like Poetry or Pipenv for Python",
+                "Run security audits regularly",
+                "Pin dependency versions for production deployments"
+            ]
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to check dependency health: {str(e)}") 

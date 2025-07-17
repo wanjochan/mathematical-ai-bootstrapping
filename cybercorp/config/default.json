@@ -1,0 +1,56 @@
+{
+  "version": "1.0.0",
+  "created": "2025-07-17T08:28:38.267303",
+  "ai_employees": [
+    {
+      "id": "PM",
+      "nickname": "PM",
+      "role": "经理",
+      "description": "负责项目规划、任务分配和进度跟踪",
+      "model_type": "cursor-ide",
+      "status": "active"
+    },
+    {
+      "id": "Dev1",
+      "nickname": "Dev1",
+      "role": "开发者",
+      "description": "负责核心功能开发，使用 vscode+augment 插件",
+      "model_type": "vscode-augment",
+      "status": "active"
+    },
+    {
+      "id": "Dev2",
+      "nickname": "Dev2",
+      "role": "开发者",
+      "description": "负责辅助功能开发，使用 claude-code-cli",
+      "model_type": "claude-code-cli",
+      "status": "active"
+    }
+  ],
+  "models": {
+    "cursor-ide": {
+      "name": "Cursor IDE 模式",
+      "description": "基于 Cursor IDE 的开发模式",
+      "suitable_roles": [
+        "经理",
+        "架构师"
+      ]
+    },
+    "vscode-augment": {
+      "name": "VSCode + Augment 模式",
+      "description": "VSCode 与 Augment 插件集成",
+      "suitable_roles": [
+        "开发者",
+        "测试员"
+      ]
+    },
+    "claude-code-cli": {
+      "name": "Claude 命令行模式",
+      "description": "Claude 命令行代码助手",
+      "suitable_roles": [
+        "开发者",
+        "文档员"
+      ]
+    }
+  }
+}

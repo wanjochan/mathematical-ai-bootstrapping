@@ -25,14 +25,14 @@ flowchart TD
     ReadTemplates --> InitDocs["初始化工作流文档"]
     InitDocs --> ReadDocs
 
-    ReadDocs --> CheckInput{"用户输入?"}
+    ReadDocs --> CheckInput{"用户有新留言?"}
 
-    CheckInput -->|有| EvaluateInput["评估用户输入"]
-    EvaluateInput --> UpdateNeeded{"需要更新文档?"}
+    CheckInput -->|有| EvaluateInput["评估用户留言"]
+    EvaluateInput --> UpdateNeeded{"评估是否需要更新文档?"}
     UpdateNeeded -->|是| UpdateDocs["更新工作文档"]
     UpdateNeeded -->|否| ExecutePlan["执行当前计划"]
 
-    CheckInput -->|无| CheckCompletion{"工作计划已完成?"}
+    CheckInput -->|无| CheckCompletion{"工作计划已彻底完成?"}
     CheckCompletion -->|是| FinalUpdate["更新文档并结束"]
     CheckCompletion -->|否| UpdateNeeded
 
@@ -53,11 +53,13 @@ flowchart TD
     RetryDecision -->|否| UpdateFailedStatus["更新失败状态"]
     UpdateFailedStatus --> NextCycle["结束当前回合"]
     
-    UpdateProgress --> NextCycle
+    UpdateProgress --> SubmitProgress["提交且合并到远程"]
+    SubmitProgress --> NextCycle
     NextCycle --> ReadDocs
 
     FinalUpdate --> UpdateFinalStatus["更新最终状态"]
     UpdateFinalStatus --> End
+
 ```
 
 ## 工作流程说明
@@ -117,6 +119,11 @@ flowchart TD
      - 更新 workplan_{work_id}.md 的进度（仅在验证成功后）
      - 更新 worknotes_{work_id}.md 的上下文和经验
      - 记录遇到的问题和解决方案
+   - **提交进度**：
+     - 将更新的文档和代码变更提交到版本控制系统
+     - 推送到远程仓库以保持同步
+     - 确保工作成果得到持久化保存
+     - 便于团队协作和进度跟踪
    - **循环完成**：
      - 结束当前回合，返回阅读文档开始下一循环
 

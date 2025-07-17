@@ -8,7 +8,7 @@ import json
 import logging
 import asyncio
 from datetime import datetime
-from ..core.websocket_manager import ConnectionManager
+from core.websocket_manager import ConnectionManager
 
 logger = logging.getLogger(__name__)
 router = APIRouter()

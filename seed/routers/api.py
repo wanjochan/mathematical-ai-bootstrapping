@@ -55,7 +55,7 @@ async def server_status() -> Dict[str, Any]:
     Server status endpoint
     Returns current server configuration and runtime information
     """
-    from ..config import settings
+    from config import settings
     
     return {
         "server": {

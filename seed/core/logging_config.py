@@ -6,7 +6,7 @@ import logging
 import logging.config
 import os
 from datetime import datetime
-from ..config import settings
+from config import settings
 
 
 def setup_logging():

@@ -334,7 +334,7 @@ async def move_resize_window(
 @router.get("/{window_id}/screenshot")
 async def get_window_screenshot(
     window_id: str,
-    format: str = Query(default="png", regex="^(png|jpg|jpeg)$"),
+    format: str = Query(default="png", pattern="^(png|jpg|jpeg)$"),
     quality: int = Query(default=80, ge=1, le=100, description="Image quality (1-100)"),
     current_user: User = Depends(require_permission(PermissionScope.WINDOWS_READ))
 ) -> Dict[str, Any]:

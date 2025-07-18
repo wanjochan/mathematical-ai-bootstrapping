@@ -10,7 +10,7 @@ from .windows import (
 )
 from .processes import (
     ProcessInfo, ProcessAction, MemoryInfo, ProcessFilter,
-    ProcessControlRequest, ProcessConnection
+    ProcessControlRequest, ProcessStatistics, ProcessTree
 )
 from .auth import (
     User, UserCreate, UserUpdate, LoginRequest, Token, TokenRefresh,
@@ -49,7 +49,8 @@ __all__ = [
     "MemoryInfo",
     "ProcessFilter",
     "ProcessControlRequest",
-    "ProcessConnection",
+    "ProcessStatistics",
+    "ProcessTree",
     
     # Auth models
     "User",

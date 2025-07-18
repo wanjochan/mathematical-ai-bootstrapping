@@ -147,7 +147,7 @@ class ProcessQuery(BaseModel):
     min_cpu_percent: Optional[float] = Field(None, ge=0, description="Minimum CPU usage percentage")
     min_memory_percent: Optional[float] = Field(None, ge=0, le=100, description="Minimum memory usage percentage")
     sort_by: str = Field("cpu_percent", description="Sort field")
-    sort_order: str = Field("desc", regex="^(asc|desc)$", description="Sort order")
+    sort_order: str = Field("desc", pattern="^(asc|desc)$", description="Sort order")
     limit: int = Field(100, ge=1, le=1000, description="Maximum number of results")
     offset: int = Field(0, ge=0, description="Result offset for pagination")
     include_threads: bool = Field(False, description="Include thread information")

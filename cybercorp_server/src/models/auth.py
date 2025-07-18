@@ -6,6 +6,15 @@ from pydantic import BaseModel, Field, EmailStr
 from enum import Enum
 
 
+class LogLevel(str, Enum):
+    """Logging level enumeration."""
+    DEBUG = "debug"
+    INFO = "info"
+    WARNING = "warning"
+    ERROR = "error"
+    CRITICAL = "critical"
+
+
 class UserRole(str, Enum):
     """User role enumeration."""
     ADMIN = "admin"

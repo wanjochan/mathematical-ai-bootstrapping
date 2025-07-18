@@ -86,7 +86,7 @@ class MetricsQuery(BaseModel):
     end_time: Optional[datetime] = Field(None, description="End time for historical data")
     interval: Optional[int] = Field(300, ge=60, le=3600, description="Aggregation interval in seconds")
     metrics: Optional[List[str]] = Field(None, description="Specific metrics to include")
-    format: str = Field("json", regex="^(json|prometheus)$", description="Response format")
+    format: str = Field("json", pattern="^(json|prometheus)$", description="Response format")
     detailed: bool = Field(False, description="Include detailed metrics")
 
 

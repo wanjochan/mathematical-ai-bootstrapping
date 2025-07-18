@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CyberCorp 运营中心</title>
+    <link href="/static/css/dashboard.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="dashboard-container">
+        <!-- 顶部导航 -->
+        <header class="dashboard-header">
+            <h1>🚀 CyberCorp 智能运营中心</h1>
+            <div class="status-bar">
+                <span id="server-status" class="status-indicator online">在线运行</span>
+                <span id="current-time" class="timestamp"></span>
+            </div>
+        </header>
+
+        <!-- 核心指标面板 -->
+        <section class="metrics-grid">
+            <div class="metric-card cpu-card">
+                <div class="metric-icon">💻</div>
+                <h3>CPU 使用率</h3>
+                <div class="metric-value" id="cpu-value">0%</div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="cpu-progress"></div>
+                </div>
+            </div>
+
+            <div class="metric-card memory-card">
+                <div class="metric-icon">💾</div>
+                <h3>内存使用</h3>
+                <div class="metric-value" id="memory-value">0%</div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="memory-progress"></div>
+                </div>
+            </div>
+
+            <div class="metric-card disk-card">
+                <div class="metric-icon">💿</div>
+                <h3>磁盘空间</h3>
+                <div class="metric-value" id="disk-value">0%</div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="disk-progress"></div>
+                </div>
+            </div>
+
+            <div class="metric-card uptime-card">
+                <div class="metric-icon">⏱️</div>
+                <h3>运行时间</h3>
+                <div class="metric-value" id="uptime-value">00:00:00</div>
+                <div class="metric-subtitle" id="process-count">0 个进程</div>
+            </div>
+        </section>
+
+        <!-- 实时图表区 -->
+        <section class="charts-section">
+            <div class="chart-container">
+                <h3>实时性能趋势</h3>
+                <canvas id="performance-chart"></canvas>
+            </div>
+            <div class="chart-container">
+                <h3>网络流量</h3>
+                <canvas id="network-chart"></canvas>
+            </div>
+        </section>
+
+        <!-- 任务流面板 -->
+        <section class="workflow-panel">
+            <h3>🔄 当前任务状态</h3>
+            <div class="tasks-container" id="tasks-list">
+                <div class="task-item loading">
+                    <div class="task-loader"></div>
+                    <span>正在加载任务数据...</span>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <script src="/static/js/dashboard.js"></script>
+</body>
+</html>

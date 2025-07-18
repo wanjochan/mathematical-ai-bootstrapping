@@ -29,6 +29,8 @@ from .routers import (
     processes_router,
     config_router,
     websocket_router,
+    employees_router,
+    tasks_router,
 )
 
 
@@ -177,6 +179,8 @@ class CyberCorpServer:
         app.include_router(processes_router, prefix=f"{api_prefix}/processes", tags=["Processes"])
         app.include_router(config_router, prefix=f"{api_prefix}/config", tags=["Configuration"])
         app.include_router(websocket_router, prefix=f"{api_prefix}/ws", tags=["WebSocket"])
+        app.include_router(employees_router, prefix=f"{api_prefix}/employees", tags=["Employees"])
+        app.include_router(tasks_router, prefix=f"{api_prefix}/tasks", tags=["Tasks"])
     
     def _add_health_check(self, app: FastAPI):
         """Add health check endpoint."""

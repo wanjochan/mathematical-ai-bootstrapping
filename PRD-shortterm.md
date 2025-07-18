@@ -157,47 +157,61 @@ CyberCorp 短期目标是构建一个由 AI 驱动的虚拟软件公司，通过
 | MON-003 | `monitor tasks` | 显示当前任务进度 | P1 |
 | MON-004 | `monitor logs [--level] [--component]` | 查看系统日志 | P2 |
 
-### 3.5 客户端模块
+### 3.5 系统组件模块
 
-#### 3.5.1 Windows桌面客户端
+#### 3.5.1 cybercorp_oper 操作控制端
 
 | 功能 ID | 命令格式 | 功能描述 | 优先级 |
 |:-------:|:--------:|:--------|:-----:|
-| WIN-001 | `client win-client [--no-gui]` | 启动Windows客户端 | P0 |
-| WIN-002 | `client win-client session create <username>` | 创建Windows会话 | P0 |
-| WIN-003 | `client win-client session list` | 列出所有Windows会话 | P0 |
-| WIN-004 | `client win-client session close <session_id>` | 关闭指定Windows会话 | P0 |
-| WIN-005 | `client win-client exec <session_id> <command>` | 在指定会话中执行命令 | P0 |
+| OPER-001 | `oper start [--session <session_name>]` | 启动操作控制端 | P0 |
+| OPER-002 | `oper window list` | 列出所有可管理窗口 | P0 |
+| OPER-003 | `oper window control <window_id> <action>` | 控制指定窗口 | P0 |
+| OPER-004 | `oper process list` | 列出所有进程 | P0 |
+| OPER-005 | `oper process control <process_id> <action>` | 控制指定进程 | P0 |
 
-#### 3.5.2 Windows客户端图形界面功能
+#### 3.5.2 cybercorp_web 前端界面
 
 | 功能 ID | 功能描述 | 优先级 |
 |:-------:|:--------|:-----:|
-| WINGUI-001 | 会话管理面板：创建、查看和关闭会话 | P0 |
-| WINGUI-002 | 命令执行面板：在选定会话中执行命令 | P0 |
-| WINGUI-003 | 状态监控面板：显示会话状态和性能指标 | P1 |
-| WINGUI-004 | 日志查看器：查看操作日志 | P2 |
+| WEB-001 | 员工管理：查看和控制虚拟员工状态 | P0 |
+| WEB-002 | 任务管理：创建、分配和监控任务 | P0 |
+| WEB-003 | 系统监控：查看系统资源和性能指标 | P1 |
+| WEB-004 | 配置中心：管理系统配置和参数 | P2 |
+
+#### 3.5.3 cybercorp_server 后端服务
+
+| 功能 ID | API端点 | 功能描述 | 优先级 |
+|:-------:|:--------|:--------|:-----:|
+| SRV-001 | `/api/employees` | 员工管理API | P0 |
+| SRV-002 | `/api/tasks` | 任务管理API | P0 |
+| SRV-003 | `/api/system` | 系统管理API | P1 |
+| SRV-004 | `/api/config` | 配置管理API | P1 |
 
 ## 4. 技术规格
 
-### 4.1 aicorp.py 主入口
+### 4.1 cybercorp_server 后端服务
 
 - **语言**：Python 3.9+
-- **依赖管理**：使用 requirements.txt 或 Poetry
-- **命令解析**：使用 argparse 或 Click 库
-- **配置管理**：JSON 格式配置文件
+- **框架**：FastAPI 或 Flask
+- **数据存储**：PostgreSQL 或 SQLite
+- **API文档**：OpenAPI/Swagger
+- **认证**：JWT 令牌认证
 
-### 4.2 AI 员工管理模块
+### 4.2 cybercorp_oper 操作控制端
 
-- **数据存储**：JSON 文件存储 AI 员工信息
-- **唯一标识**：每个 AI 员工分配唯一 ID
-- **角色验证**：确保角色符合预定义类型
-- **事件通知**：AI 员工变更时触发通知
+- **语言**：Python 3.9+
+- **UI框架**：PyQt 或 Tkinter
+- **系统交互**：pywin32 (Windows)，对应Linux库
+- **通信**：WebSocket 和 HTTP API
+- **日志**：结构化日志，支持远程传输
 
-### 4.3 模型配置模块
+### 4.3 cybercorp_web 前端界面
 
-- **适配器模式**：为不同模型类型实现适配器
-- **配置验证**：验证模型参数的有效性
+- **框架**：React 或 Vue.js
+- **UI组件**：Material-UI 或 Ant Design
+- **状态管理**：Redux 或 Vuex
+- **API客户端**：Axios 或 Fetch API
+- **构建工具**：Webpack 或 Vite
 - **动态加载**：支持运行时切换模型配置
 - **资源管理**：监控和限制模型资源使用
 

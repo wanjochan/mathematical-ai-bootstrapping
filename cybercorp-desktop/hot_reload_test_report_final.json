@@ -1,0 +1,131 @@
+{
+  "total_tests": 8,
+  "passed": 7,
+  "failed": 1,
+  "success_rate": 87.5,
+  "results": [
+    {
+      "test": "Server Startup",
+      "success": true,
+      "timestamp": 1752815916.6640565,
+      "details": {
+        "startup_time": "2.017s",
+        "port": 8000,
+        "running": true
+      }
+    },
+    {
+      "test": "GET /status",
+      "success": true,
+      "timestamp": 1752815918.6786842,
+      "details": {
+        "status_code": 200,
+        "response_time": "2.007s",
+        "data": {
+          "status": "healthy",
+          "timestamp": 1752815918.6752775,
+          "uptime": 6.03960108757019,
+          "components": 0,
+          "watching": false,
+          "server": {
+            "port": 8000,
+            "address": "127.0.0.1"
+          }
+        }
+      }
+    },
+    {
+      "test": "GET /health",
+      "success": true,
+      "timestamp": 1752815920.8999135,
+      "details": {
+        "status_code": 200,
+        "response_time": "2.219s"
+      }
+    },
+    {
+      "test": "GET /metrics",
+      "success": true,
+      "timestamp": 1752815922.9633563,
+      "details": {
+        "status_code": 200,
+        "response_time": "2.061s"
+      }
+    },
+    {
+      "test": "POST /reload (all)",
+      "success": true,
+      "timestamp": 1752815925.0625048,
+      "details": {
+        "status_code": 200,
+        "response_time": "2.096s",
+        "result": {
+          "total": 0,
+          "success": 0,
+          "failed": 0,
+          "results": []
+        }
+      }
+    },
+    {
+      "test": "GET /invalid_endpoint",
+      "success": true,
+      "timestamp": 1752815927.111352,
+      "details": {
+        "status_code": 404,
+        "expected": 404
+      }
+    },
+    {
+      "test": "POST /reload (invalid JSON)",
+      "success": true,
+      "timestamp": 1752815929.1308658,
+      "details": {
+        "status_code": 400,
+        "expected": 400
+      }
+    },
+    {
+      "test": "Response Time",
+      "success": false,
+      "timestamp": 1752815950.3002815,
+      "details": {
+        "average": "2.117s",
+        "min": "2.027s",
+        "max": "2.270s",
+        "target": "< 0.5s"
+      }
+    },
+    {
+      "test": "Concurrent Requests",
+      "success": true,
+      "timestamp": 1752815952.811506,
+      "details": {
+        "success_rate": "100.0%",
+        "total_requests": 20,
+        "successful_requests": 20,
+        "target": ">= 95%"
+      }
+    },
+    {
+      "test": "Startup Success Rate",
+      "success": true,
+      "timestamp": 1752815993.4701545,
+      "details": {
+        "success_rate": "100.0%",
+        "successful_starts": 10,
+        "total_attempts": 10,
+        "target": ">= 95%"
+      }
+    },
+    {
+      "test": "Server Shutdown",
+      "success": true,
+      "timestamp": 1752815997.866158,
+      "details": {
+        "shutdown_time": "0.391s"
+      }
+    }
+  ],
+  "port_used": 8000
+}

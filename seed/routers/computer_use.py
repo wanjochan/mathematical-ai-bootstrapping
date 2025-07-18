@@ -25,7 +25,8 @@ import pyautogui
 from PIL import Image, ImageDraw
 import io
 
-from .ui_tars import get_stream_instance, WindowSnapshot
+from .ui_tars import get_stream_instance
+from .ui_tars_core import WindowSnapshot
 
 # 配置pyautogui
 pyautogui.FAILSAFE = True  # 鼠标移到左上角停止

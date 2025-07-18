@@ -2,3 +2,5 @@ logs/
 *.pyc
 backups/
 *.log
+*.png
+*.json

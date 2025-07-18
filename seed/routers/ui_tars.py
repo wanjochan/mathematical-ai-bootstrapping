@@ -21,53 +21,23 @@ from io import BytesIO
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, HTTPException
 from pydantic import BaseModel
-import win32gui
-import win32con
-import win32api
-import win32ui
-import win32process
-from PIL import Image, ImageGrab
-import ui_tars.action_parser as action_parser
-import ui_tars.prompt as ui_tars_prompt
+from PIL import Image
 
-# 配置模型
-class UITarsConfig(BaseModel):
-    fps: float = 1.0  # 帧率，默认1帧/秒
-    max_width: int = 1920
-    max_height: int = 1080
-    compression_quality: int = 85
-    enable_smart_resize: bool = True
-    target_window: Optional[str] = None  # 目标窗口标题或句柄
+# 导入新的抽象层
+from .ui_tars_core import (
+    create_stream_manager, create_platform_capture,
+    UITarsConfig, WindowInfo, UIElement, WindowSnapshot
+)
+from .ui_tars_windows import WindowsStreamManager
 
-# 窗口信息数据结构
-@dataclass
-class WindowInfo:
-    hwnd: int
-    title: str
-    class_name: str
-    rect: tuple  # (left, top, right, bottom)
-    is_visible: bool
-    is_enabled: bool
-    process_id: int
-
-@dataclass
-class UIElement:
-    element_type: str
-    text: str
-    rect: tuple
-    attributes: Dict[str, Any]
-    children: List["UIElement"]
-
-@dataclass
-class WindowSnapshot:
-    timestamp: datetime
-    window_info: WindowInfo
-    screenshot_base64: Optional[str]
-    ui_elements: List[UIElement]
-    frame_size: tuple  # (width, height)
-    
-    def to_dict(self) -> Dict[str, Any]:
-        return asdict(self)
+# 保持向后兼容的导入
+try:
+    import ui_tars.action_parser as action_parser
+    import ui_tars.prompt as ui_tars_prompt
+    UI_TARS_AVAILABLE = True
+except ImportError:
+    UI_TARS_AVAILABLE = False
+    print("⚠️  ui-tars库未安装，使用基础实现")
 
 class UITarsWindowStream:
     """UI-TARS 窗口信息流核心类"""
@@ -283,15 +253,20 @@ class UITarsWindowStream:
 # API路由器
 router = APIRouter(prefix="/ui-tars", tags=["UI-TARS"])
 
-# 全局流实例
-_stream_instance: Optional[UITarsWindowStream] = None
+# 全局流实例 - 更新为使用新架构
+_stream_instance: Optional[WindowsStreamManager] = None
 
-def get_stream_instance() -> UITarsWindowStream:
-    """获取全局流实例"""
+def get_stream_instance() -> WindowsStreamManager:
+    """获取全局流实例（使用新架构）"""
     global _stream_instance
     if _stream_instance is None:
-        _stream_instance = UITarsWindowStream()
+        _stream_instance = WindowsStreamManager()
     return _stream_instance
+
+# 向后兼容函数
+def get_legacy_stream_instance():
+    """获取兼容旧接口的流实例"""
+    return get_stream_instance().manager
 
 @router.post("/config")
 async def update_config(config: UITarsConfig):

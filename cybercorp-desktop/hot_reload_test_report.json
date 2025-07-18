@@ -1,0 +1,93 @@
+{
+  "total_tests": 7,
+  "passed": 1,
+  "failed": 6,
+  "success_rate": 14.285714285714285,
+  "results": [
+    {
+      "test": "Server Startup",
+      "success": false,
+      "timestamp": 1752815777.978945,
+      "details": {
+        "error": "Failed to start server",
+        "running": false
+      }
+    },
+    {
+      "test": "GET /status",
+      "success": false,
+      "timestamp": 1752815780.000935,
+      "details": {
+        "status_code": 400
+      }
+    },
+    {
+      "test": "GET /health",
+      "success": false,
+      "timestamp": 1752815782.0105631,
+      "details": {
+        "status_code": 400
+      }
+    },
+    {
+      "test": "GET /metrics",
+      "success": false,
+      "timestamp": 1752815784.0150912,
+      "details": {
+        "status_code": 400
+      }
+    },
+    {
+      "test": "POST /reload (all)",
+      "success": false,
+      "timestamp": 1752815786.0229146,
+      "details": {
+        "status_code": 400
+      }
+    },
+    {
+      "test": "POST /reload (invalid)",
+      "success": false,
+      "timestamp": 1752815788.031594,
+      "details": {
+        "status_code": 400
+      }
+    },
+    {
+      "test": "GET /invalid_endpoint",
+      "success": false,
+      "timestamp": 1752815790.0493112,
+      "details": {
+        "status_code": 400,
+        "expected": 404
+      }
+    },
+    {
+      "test": "POST /reload (invalid JSON)",
+      "success": true,
+      "timestamp": 1752815792.0574641,
+      "details": {
+        "status_code": 400,
+        "expected": 400
+      }
+    },
+    {
+      "test": "Concurrent Requests",
+      "success": false,
+      "timestamp": 1752815804.1215904,
+      "details": {
+        "success_rate": "0.0%",
+        "target": ">= 95%"
+      }
+    },
+    {
+      "test": "Server Shutdown",
+      "success": false,
+      "timestamp": 1752815806.1234038,
+      "details": {
+        "error": "Server still responding",
+        "shutdown_time": "0.000s"
+      }
+    }
+  ]
+}

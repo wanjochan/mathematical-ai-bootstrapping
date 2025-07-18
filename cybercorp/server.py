@@ -163,20 +163,17 @@ async def create_initial_employees():
     """创建初始员工"""
     initial_employees = [
         {"name": "张三", "role": "developer", "skill_level": 0.8},
-        {"name": "李四", "role": "finance", "skill_level": 0.7},
-        {"name": "王五", "role": "marketing", "skill_level": 0.6},
-        {"name": "赵六", "role": "hr", "skill_level": 0.5},
+        {"name": "李四", "role": "analyst", "skill_level": 0.7},
+        {"name": "王五", "role": "operator", "skill_level": 0.6},
+        {"name": "赵六", "role": "monitor", "skill_level": 0.5},
         {"name": "钱七", "role": "developer", "skill_level": 0.9},
     ]
     
     for emp_data in initial_employees:
-        employee = VirtualEmployee(
-            id=f"emp_{emp_data['name']}",
+        await employee_manager.create_employee(
             name=emp_data['name'],
-            role=EmployeeRole(emp_data['role']),
-            skill_level=emp_data['skill_level']
+            role=EmployeeRole(emp_data['role'])
         )
-        await employee_manager.add_employee(employee)
         
     logger.info(f"Created {len(initial_employees)} initial employees")
 
@@ -350,18 +347,7 @@ async def get_employees():
     """获取所有员工"""
     try:
         employees = await employee_manager.get_all_employees()
-        return [
-            {
-                "id": emp.id,
-                "name": emp.name,
-                "role": emp.role.value,
-                "skill_level": emp.skill_level,
-                "status": emp.status,
-                "workload": emp.workload,
-                "current_task": emp.current_task
-            }
-            for emp in employees
-        ]
+        return employees  # 已经是字典格式
     except Exception as e:
         logger.error(f"Error getting employees: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -508,16 +494,20 @@ async def get_dashboard_data():
         employee_performance = await ceo_assistant.monitor_employee_performance()
         daily_report = await secretary_assistant.prepare_daily_report()
         
+        # 获取系统状态
+        system_overview = await employee_manager.get_system_overview()
+        all_tasks = await task_manager.get_all_tasks()
+        
         dashboard = {
             "timestamp": datetime.utcnow().isoformat(),
             "business_overview": business_analysis,
             "employee_performance": employee_performance,
             "daily_summary": daily_report,
             "system_status": {
-                "total_employees": len(await employee_manager.get_all_employees()),
-                "total_tasks": len(await task_manager.get_all_tasks()),
-                "active_tasks": len(await task_manager.get_tasks_by_status(TaskStatus.IN_PROGRESS)),
-                "completed_tasks": len(await task_manager.get_tasks_by_status(TaskStatus.COMPLETED))
+                "total_employees": system_overview["total_employees"],
+                "total_tasks": len(all_tasks),
+                "active_tasks": len([t for t in all_tasks if t["status"] == "in_progress"]),
+                "completed_tasks": len([t for t in all_tasks if t["status"] == "completed"])
             }
         }
         

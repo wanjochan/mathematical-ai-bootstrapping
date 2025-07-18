@@ -66,7 +66,7 @@ class EmployeeManager:
         self.logger.info("Initializing Employee Manager...")
         
         # 初始化角色模板
-        await self._initialize_role_templates()
+        self._initialize_role_templates()
         
         # 创建默认员工
         await self._create_default_employees()

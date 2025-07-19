@@ -32,7 +32,11 @@ class CyberCorpClient:
         while True:
             try:
                 logging.info(f"Connecting to {self.server_url}...")
-                self.ws = await websockets.connect(self.server_url)
+                # Use legacy_recv for compatibility
+                self.ws = await websockets.connect(
+                    self.server_url,
+                    compression=None  # Disable compression for compatibility
+                )
                 logging.info("Connected to server")
                 
                 # Start heartbeat
@@ -81,66 +85,43 @@ class CyberCorpClient:
         structure_data = {}
         
         try:
-            # Get active window info
-            hwnd = win32gui.GetForegroundWindow()
-            window_title = win32gui.GetWindowText(hwnd)
-            
-            structure_data['active_window'] = {
-                'title': window_title,
-                'hwnd': hwnd
-            }
-            
-            # Try to find VSCode windows
             if WINAUTO_AVAILABLE:
                 desktop = Desktop(backend="uia")
-                vscode_windows = []
+                all_windows = []
                 
-                # Find all windows
+                # Find ALL windows (not just active)
                 for window in desktop.windows():
                     try:
                         title = window.window_text()
-                        if 'Visual Studio Code' in title or 'VSCode' in title:
-                            # Get window structure
+                        class_name = window.class_name()
+                        
+                        # Check if it's VSCode or contains Roo Code dialog
+                        if ('Visual Studio Code' in title or 'VSCode' in title or 
+                            class_name == 'Chrome_WidgetWin_1'):
+                            
+                            logging.info(f"Found window: {title}")
+                            
+                            # Deep scan for Roo Code content
                             window_info = {
                                 'title': title,
-                                'class_name': window.class_name(),
+                                'class_name': class_name,
                                 'is_visible': window.is_visible(),
                                 'rectangle': str(window.rectangle()),
-                                'controls': []
+                                'roo_code_content': []
                             }
                             
-                            # Get top-level controls
-                            for control in window.children()[:10]:  # Limit to first 10
-                                try:
-                                    control_info = {
-                                        'type': control.element_info.control_type,
-                                        'name': control.element_info.name or '',
-                                        'class_name': control.element_info.class_name or '',
-                                        'automation_id': control.element_info.automation_id or ''
-                                    }
-                                    window_info['controls'].append(control_info)
-                                except:
-                                    pass
-                                    
-                            vscode_windows.append(window_info)
-                    except:
-                        pass
+                            # Extract Roo Code dialog content
+                            roo_content = self._extract_roo_code_content(window)
+                            if roo_content:
+                                window_info['roo_code_content'] = roo_content
+                            
+                            all_windows.append(window_info)
+                    except Exception as e:
+                        logging.debug(f"Error processing window: {e}")
                         
-                structure_data['vscode_windows'] = vscode_windows
+                structure_data['windows'] = all_windows
+                structure_data['total_windows'] = len(all_windows)
                 
-                # Get active window detailed structure
-                try:
-                    active_app = pywinauto.Application(backend="uia").connect(handle=hwnd)
-                    active_window = active_app.window(handle=hwnd)
-                    
-                    structure_data['active_window_details'] = {
-                        'control_count': len(active_window.children()),
-                        'is_enabled': active_window.is_enabled(),
-                        'has_keyboard_focus': active_window.has_keyboard_focus()
-                    }
-                except:
-                    pass
-                    
             else:
                 structure_data['error'] = 'pywinauto not available'
                 
@@ -152,6 +133,64 @@ class CyberCorpClient:
             'structure': json.dumps(structure_data, indent=2),
             'timestamp': datetime.now().isoformat()
         })
+    
+    def _extract_roo_code_content(self, window, depth=0, max_depth=15):
+        """Extract Roo Code dialog content from window"""
+        if depth > max_depth:
+            return []
+            
+        contents = []
+        
+        try:
+            # Check all controls
+            for control in window.children():
+                try:
+                    control_type = control.element_info.control_type
+                    control_name = control.element_info.name or ''
+                    
+                    # Look for Roo Code related content
+                    if 'Roo Code' in control_name or 'Task:' in control_name:
+                        # Found relevant section, extract all text
+                        texts = self._get_all_texts(control)
+                        if texts:
+                            contents.append({
+                                'type': control_type,
+                                'content': texts
+                            })
+                    
+                    # Recursively check children
+                    child_content = self._extract_roo_code_content(control, depth + 1, max_depth)
+                    if child_content:
+                        contents.extend(child_content)
+                        
+                except:
+                    pass
+                    
+        except:
+            pass
+            
+        return contents
+    
+    def _get_all_texts(self, control):
+        """Get all text content from a control and its children"""
+        texts = []
+        
+        try:
+            # Get control's own text
+            control_texts = control.texts()
+            for text in control_texts:
+                if text and len(text) > 5 and not text.startswith('\ue'):
+                    texts.append(text)
+            
+            # Get children's text
+            for child in control.children():
+                child_texts = self._get_all_texts(child)
+                texts.extend(child_texts)
+                
+        except:
+            pass
+            
+        return texts
         
     async def get_processes(self):
         try:

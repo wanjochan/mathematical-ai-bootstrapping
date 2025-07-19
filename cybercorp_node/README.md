@@ -125,6 +125,26 @@ python cybercorp_cli.py batch wjchk examples/batch_commands.json
    - 重试机制
    - 响应验证
 
+### 新增高级功能模块
+
+8. **Win32Backend** - Windows API 集成
+   - 窗口管理和控制
+   - 鼠标拖动（支持验证码）
+   - 高级键盘输入
+   - 窗口截图
+
+9. **OCRBackend** - 多引擎OCR支持
+   - Windows OCR API（最快）
+   - EasyOCR（多语言）
+   - Tesseract（经典）
+   - PaddleOCR（中文优化）
+
+10. **UIVisionModel** - 视觉识别模型
+    - UI元素检测
+    - 布局分析
+    - 实时性能（30+ FPS）
+    - 轻量级实现
+
 ## RPA 经验总结
 
 ### 1. 后台操作优于前台切换
@@ -212,6 +232,13 @@ register_command('my_command', handle_my_command)
 - `send_keys` - 发送按键组合
 - `take_screenshot` - 截屏
 
+### 高级控制类（新增）
+- `mouse_drag` - 鼠标拖动（支持验证码）
+- `ocr_screen` - 屏幕区域文字识别
+- `ocr_window` - 窗口文字识别
+- `win32_find_window` - 查找特定窗口
+- `win32_send_keys` - Win32 API 发送按键
+
 ## 故障排除
 
 ### 客户端无法连接
@@ -276,6 +303,49 @@ python cybercorp_cli.py --help
 - 通用功能抽象到 `utils/` 工具类
 - 统一的错误处理和输出格式
 - 支持批量操作和交互模式
+
+## 新功能使用示例
+
+### 鼠标拖动（验证码场景）
+```bash
+# 执行滑块验证码拖动
+python cybercorp_cli.py command wjchk mouse_drag --params '{
+    "start_x": 100, "start_y": 200,
+    "end_x": 400, "end_y": 200,
+    "duration": 2.0,
+    "humanize": true
+}'
+```
+
+### OCR文字识别
+```bash
+# 识别屏幕区域文字
+python cybercorp_cli.py command wjchk ocr_screen --params '{
+    "x": 100, "y": 100,
+    "width": 500, "height": 300,
+    "engine": "windows"
+}'
+
+# 识别特定窗口的文字
+python cybercorp_cli.py command wjchk ocr_window --params '{
+    "hwnd": 123456,
+    "engine": "easyocr"
+}'
+```
+
+### Win32 API操作
+```bash
+# 查找窗口
+python cybercorp_cli.py command wjchk win32_find_window --params '{
+    "window_name": "验证码"
+}'
+
+# 发送特殊按键
+python cybercorp_cli.py command wjchk win32_send_keys --params '{
+    "keys": "^a{DELETE}Hello World{ENTER}",
+    "delay": 0.05
+}'
+```
 
 ## 贡献指南
 

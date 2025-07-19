@@ -202,6 +202,21 @@ class ProcessEventType(str, Enum):
     AFFINITY_CHANGED = "process_affinity_changed"
 
 
+class ProcessCreateRequest(BaseModel):
+    """Request model for creating a new process."""
+    command: str = Field(..., description="Command to execute")
+    args: List[str] = Field(default_factory=list, description="Command arguments")
+    cwd: Optional[str] = Field(None, description="Working directory")
+    env: Dict[str, str] = Field(default_factory=dict, description="Environment variables")
+    detach: bool = Field(default=False, description="Run process in background")
+    priority: ProcessPriority = Field(default=ProcessPriority.NORMAL, description="Process priority")
+    cpu_limit: Optional[float] = Field(None, ge=0.1, le=100.0, description="CPU limit percentage")
+    memory_limit: Optional[int] = Field(None, ge=1024, description="Memory limit in bytes")
+    timeout: Optional[int] = Field(None, ge=1, description="Process timeout in seconds")
+    capture_output: bool = Field(default=True, description="Capture stdout and stderr")
+    shell: bool = Field(default=False, description="Execute in shell")
+
+
 class ProcessStatistics(BaseModel):
     """Process statistics data model."""
     total_processes: int = Field(..., description="Total number of processes")

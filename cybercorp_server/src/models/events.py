@@ -48,14 +48,63 @@ class EventType(str, Enum):
     CLIENT_DISCONNECTED = "websocket.client_disconnected"
     SUBSCRIPTION_ADDED = "websocket.subscription_added"
     SUBSCRIPTION_REMOVED = "websocket.subscription_removed"
+
+
+class EventMessage(BaseModel):
+    """Generic event message structure for real-time communication."""
+    id: str = Field(..., description="Unique identifier for the event")
+    type: EventType = Field(..., description="Type of the event")
+    timestamp: datetime = Field(default_factory=datetime.now, description="Event occurrence time")
+    source: str = Field(..., description="Source system/component that triggered the event")
+    data: Dict[str, Any] = Field(default_factory=dict, description="Event-specific data payload")
+    message: Optional[str] = Field(None, description="Human-readable event description")
+    metadata: Dict[str, Any] = Field(default_factory=dict, description="Additional context information")
+    priority: str = Field(default="normal", description="Event priority level (low, normal, high, critical)")
     
-    # Monitoring events
-    MONITORING_STARTED = "monitoring.started"
-    MONITORING_STOPPED = "monitoring.stopped"
-    ALERT_TRIGGERED = "monitoring.alert_triggered"
+    class Config:
+        json_encoders = {
+            datetime: lambda v: v.isoformat()
+        }
     
-    # Custom events
-    CUSTOM = "custom"
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert event message to dictionary for JSON serialization."""
+        return {
+            "id": self.id,
+            "type": self.type.value,
+            "timestamp": self.timestamp.isoformat(),
+            "source": self.source,
+            "data": self.data,
+            "message": self.message,
+            "metadata": self.metadata,
+            "priority": self.priority
+        }
+
+
+class EventAcknowledgement(BaseModel):
+    """Acknowledgement response for event messages."""
+    received_at: datetime = Field(default_factory=datetime.now)
+    processed: bool = Field(default=True)
+    event_id: str = Field(..., description="Original event message ID")
+    client_id: Optional[str] = Field(None, description="Acknowledging client identifier")
+    error: Optional[str] = Field(None, description="Error message if processing failed")
+
+
+class EventSubscription(BaseModel):
+    """WebSocket event subscription model."""
+    client_id: str = Field(..., description="Unique client identifier")
+    event_types: List[EventType] = Field(..., description="List of event types to subscribe to")
+    filter_conditions: Dict[str, Any] = Field(default_factory=dict, description="Additional filtering criteria")
+    created_at: datetime = Field(default_factory=datetime.now)
+
+
+class EventFilter(BaseModel):
+    """Filter criteria for events."""
+    event_types: Optional[List[EventType]] = Field(None, description="Filter by event types")
+    source: Optional[str] = Field(None, description="Filter by event source")
+    priority: Optional[str] = Field(None, description="Filter by priority")
+    time_range: Optional[Dict[str, datetime]] = Field(None, description="Time range filter")
+    data_filter: Optional[Dict[str, Any]] = Field(None, description="Filter by event data properties")
+    
 
 
 class EventSeverity(str, Enum):

@@ -4,7 +4,7 @@ import json
 from typing import Dict, Any, Optional, Set
 from datetime import datetime
 
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends, HTTPException, status
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends, HTTPException, status, Query
 from pydantic import BaseModel
 
 from ..models.auth import User, PermissionScope

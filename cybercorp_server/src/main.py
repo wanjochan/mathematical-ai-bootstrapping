@@ -168,11 +168,15 @@ class CyberCorpServer:
     
     def _include_routers(self, app: FastAPI):
         """Include API routers."""
+        from .routers.dashboard import dashboard_router
         
         # API v1 prefix
         api_prefix = "/api/v1"
         
-        # Include routers
+        # Include dashboard (root level)
+        app.include_router(dashboard_router, tags=["Dashboard"])
+        
+        # Include API routers
         app.include_router(auth_router, prefix=f"{api_prefix}/auth", tags=["Authentication"])
         app.include_router(system_router, prefix=f"{api_prefix}/system", tags=["System"])
         app.include_router(windows_router, prefix=f"{api_prefix}/windows", tags=["Windows"])

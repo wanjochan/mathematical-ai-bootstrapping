@@ -27,7 +27,7 @@ async def list_employees(
     name_contains: Optional[str] = Query(None, description="Filter by name containing text"),
     limit: int = Query(default=100, ge=1, le=1000, description="Maximum results"),
     page: int = Query(default=1, ge=1, description="Page number"),
-    current_user: User = Depends(require_permission(PermissionScope.EMPLOYEES_READ))
+    current_user: User = Depends(require_permission("employees.read"))
 ) -> Dict[str, Any]:
     """List all employees."""
     try:
@@ -69,7 +69,7 @@ async def list_employees(
 @router.post("", response_model=Employee, status_code=status.HTTP_201_CREATED)
 async def create_employee(
     employee_create: EmployeeCreate,
-    current_user: User = Depends(require_permission(PermissionScope.EMPLOYEES_WRITE))
+    current_user: User = Depends(require_permission("employees.write"))
 ) -> Employee:
     """Create a new employee."""
     try:
@@ -107,7 +107,7 @@ async def create_employee(
 @router.get("/{employee_id}", response_model=Employee)
 async def get_employee(
     employee_id: str,
-    current_user: User = Depends(require_permission(PermissionScope.EMPLOYEES_READ))
+    current_user: User = Depends(require_permission("employees.read"))
 ) -> Employee:
     """Get employee details."""
     try:
@@ -137,7 +137,7 @@ async def get_employee(
 async def update_employee(
     employee_id: str,
     employee_update: EmployeeUpdate,
-    current_user: User = Depends(require_permission(PermissionScope.EMPLOYEES_WRITE))
+    current_user: User = Depends(require_permission("employees.write"))
 ) -> Employee:
     """Update employee details."""
     try:
@@ -169,7 +169,7 @@ async def update_employee(
 @router.delete("/{employee_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_employee(
     employee_id: str,
-    current_user: User = Depends(require_permission(PermissionScope.EMPLOYEES_WRITE))
+    current_user: User = Depends(require_permission("employees.write"))
 ) -> None:
     """Delete an employee."""
     try:
@@ -200,7 +200,7 @@ async def delete_employee(
 async def update_employee_status(
     employee_id: str,
     status_update: EmployeeStatusUpdate,
-    current_user: User = Depends(require_permission(PermissionScope.EMPLOYEES_WRITE))
+    current_user: User = Depends(require_permission("employees.write"))
 ) -> Employee:
     """Update employee status."""
     try:
@@ -240,7 +240,7 @@ async def get_employee_tasks(
     status: Optional[str] = Query(None, description="Filter by task status"),
     limit: int = Query(default=100, ge=1, le=1000, description="Maximum results"),
     page: int = Query(default=1, ge=1, description="Page number"),
-    current_user: User = Depends(require_permission(PermissionScope.EMPLOYEES_READ))
+    current_user: User = Depends(require_permission("employees.read"))
 ) -> Dict[str, Any]:
     """Get tasks assigned to an employee."""
     try:
@@ -283,7 +283,7 @@ async def get_employee_tasks(
 async def get_employee_performance(
     employee_id: str,
     period: str = Query("month", description="Performance period (day, week, month, year)"),
-    current_user: User = Depends(require_permission(PermissionScope.EMPLOYEES_READ))
+    current_user: User = Depends(require_permission("employees.read"))
 ) -> Dict[str, Any]:
     """Get employee performance metrics."""
     try:

@@ -1,0 +1,18 @@
+auth:
+  access_token_expire_minutes: 30
+  algorithm: HS256
+  refresh_token_expire_days: 7
+  secret_key: your-secret-key-change-this-in-production
+debug: true
+environment: development
+logging:
+  enable_console: true
+  level: INFO
+monitoring:
+  enabled: true
+  interval: 1000
+server:
+  debug: true
+  host: 0.0.0.0
+  port: 8080
+  reload: true

@@ -1,7 +1,7 @@
 """Authentication models for CyberCorp Server."""
 
 from datetime import datetime
-from typing import Optional, List
+from typing import Optional, List, Union
 from pydantic import BaseModel, Field, EmailStr
 from enum import Enum
 
@@ -22,6 +22,25 @@ class UserRole(str, Enum):
     VIEWER = "viewer"
 
 
+class PermissionScope(str, Enum):
+    """Permission scope enumeration."""
+    SYSTEM_READ = "system.read"
+    SYSTEM_WRITE = "system.write"
+    PROCESSES_READ = "processes.read"
+    PROCESSES_WRITE = "processes.write"
+    EMPLOYEES_READ = "employees.read"
+    EMPLOYEES_WRITE = "employees.write"
+    TASKS_READ = "tasks.read"
+    TASKS_WRITE = "tasks.write"
+    WINDOWS_READ = "windows.read"
+    WINDOWS_WRITE = "windows.write"
+    CONFIG_READ = "config.read"
+    CONFIG_WRITE = "config.write"
+    DASHBOARD_READ = "dashboard.read"
+    ADMIN_READ = "admin.read"
+    ADMIN_WRITE = "admin.write"
+
+
 class User(BaseModel):
     """User model."""
     id: str = Field(..., description="Unique user identifier")
@@ -29,7 +48,24 @@ class User(BaseModel):
     role: UserRole = Field(default=UserRole.USER, description="User role")
     is_active: bool = Field(default=True, description="Whether user is active")
     created_at: datetime = Field(default_factory=datetime.utcnow, description="User creation timestamp")
-    last_login: Optional[datetime] = Field(None, description="Last login timestamp")
+    last_login: Optional[datetime] = Field(None, description="Last login timestamp")    
+    permissions: List[PermissionScope] = Field(default_factory=list, description="User permissions")
+    
+    def has_permission(self, permission: Union[PermissionScope, str]) -> bool:
+        """Check if user has specific permission."""
+        # Admin role has all permissions
+        if self.role == UserRole.ADMIN:
+            return True
+        
+        # Check if permission is in user's permissions list
+        if isinstance(permission, str):
+            # Convert string permission to lowercase for case-insensitive comparison
+            perm_str = permission.lower()
+            # Check if any permission in the list matches the string (by name)
+            return any(perm.name.lower() == perm_str for perm in self.permissions)
+        else:
+            # Direct comparison for PermissionScope enum
+            return permission in self.permissions
     
     class Config:
         """Pydantic configuration."""

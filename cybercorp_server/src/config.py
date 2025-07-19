@@ -127,6 +127,11 @@ class Config(BaseModel):
     database: DatabaseConfig = Field(default_factory=DatabaseConfig)
     ssl: SSLConfig = Field(default_factory=SSLConfig)
     auth: AuthConfig = Field(..., description="Authentication configuration")
+
+    # security is a core dependency, derived from auth settings
+    @property
+    def security(self) -> AuthConfig:
+        return self.auth
     monitoring: MonitoringConfig = Field(default_factory=MonitoringConfig)
     websocket: WebSocketConfig = Field(default_factory=WebSocketConfig)
     logging: LoggingConfig = Field(default_factory=LoggingConfig)

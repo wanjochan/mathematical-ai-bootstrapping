@@ -3,7 +3,7 @@
 import jwt
 import bcrypt
 from datetime import datetime, timedelta
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, Union
 from fastapi import HTTPException, status, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
@@ -24,8 +24,8 @@ class AuthManager:
         """Initialize auth manager."""
         self.config = get_config()
         self.secret_key = self.config.security.secret_key
-        self.algorithm = "HS256"
-        self.access_token_expire_minutes = self.config.security.token_expire_minutes
+        self.algorithm = self.config.security.algorithm
+        self.access_token_expire_minutes = self.config.security.access_token_expire_minutes
         
     async def initialize(self):
         """Initialize authentication system."""
@@ -143,7 +143,7 @@ class AuthManager:
         
         return user
     
-    def require_permission(self, permission: PermissionScope):
+    def require_permission(self, permission: Union[PermissionScope, str]):
         """Dependency to require specific permission."""
         async def permission_dependency(
             credentials: HTTPAuthorizationCredentials = Depends(security)

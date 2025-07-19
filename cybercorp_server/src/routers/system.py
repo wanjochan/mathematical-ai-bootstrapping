@@ -38,7 +38,7 @@ async def get_system_info(
 
 @router.get("/metrics", response_model=SystemMetrics)
 async def get_current_metrics(
-    format: str = Query(default="json", pattern="^(json|prometheus)$")
+    format: str = Query(default="json", pattern="^(json|prometheus)$"),
     detailed: bool = Query(default=False),
     current_user: User = Depends(require_permission(PermissionScope.SYSTEM_READ))
 ) -> SystemMetrics:

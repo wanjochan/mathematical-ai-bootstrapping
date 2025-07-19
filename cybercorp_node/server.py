@@ -176,6 +176,21 @@ class CyberCorpServer:
                 if command_id:
                     self.command_results[command_id] = data.get('result')
                     logger.info(f"Received result for command {command_id}")
+                
+                # Forward result back to requesting client if it was a forwarded command
+                # Check if there's a from_client field in the original message
+                # For now, broadcast to all management clients
+                for cid, c in self.clients.items():
+                    if c.capabilities and c.capabilities.get('management'):
+                        result_msg = {
+                            'type': 'command_result',
+                            'from_client': client.id,
+                            'command_id': command_id,
+                            'result': data.get('result'),
+                            'error': data.get('error'),
+                            'timestamp': data.get('timestamp')
+                        }
+                        await self._send_message(c, result_msg)
                     
             elif msg_type == 'status':
                 # Client status update
@@ -205,6 +220,31 @@ class CyberCorpServer:
                         'clients': client_list
                     })
                     logger.info(f"Sent client list to {client.id}: {len(client_list)} clients")
+                
+            elif msg_type == 'forward_command':
+                # Forward command from one client to another
+                target_client_id = data.get('target_client')
+                command_data = data.get('command')
+                
+                if target_client_id and command_data:
+                    if target_client_id in self.clients:
+                        target_client = self.clients[target_client_id]
+                        # Add source client info
+                        command_data['from_client'] = client.id
+                        await self._send_message(target_client, command_data)
+                        logger.info(f"Forwarded command from {client.id} to {target_client_id}")
+                        
+                        # Send acknowledgment
+                        await self._send_message(client, {
+                            'type': 'forward_ack',
+                            'target_client': target_client_id,
+                            'status': 'sent'
+                        })
+                    else:
+                        await self._send_message(client, {
+                            'type': 'error',
+                            'message': f'Target client {target_client_id} not found'
+                        })
                 
         except json.JSONDecodeError:
             logger.error(f"Invalid JSON from client {client.id}")

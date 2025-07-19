@@ -11,7 +11,9 @@ import time
 import os
 import sys
 import importlib
+import importlib.util
 import threading
+import configparser
 from datetime import datetime
 from typing import Dict, Any, Optional, Callable
 from dataclasses import dataclass
@@ -110,26 +112,34 @@ class Client:
         }
 
 class CyberCorpServer:
-    def __init__(self, host='0.0.0.0', port=None):
-        self.host = host
-        self.port = port or int(os.environ.get('CYBERCORP_PORT', '9998'))
+    def __init__(self, host=None, port=None):
+        # Load config.ini first
+        self.ini_config = configparser.ConfigParser()
+        config_path = os.path.join(os.path.dirname(__file__), 'config.ini')
+        if os.path.exists(config_path):
+            self.ini_config.read(config_path)
+            logger.info(f"Loaded configuration from {config_path}")
+        
+        self.host = host or self.ini_config.get('server', 'host', fallback='0.0.0.0')
+        self.port = port or self.ini_config.getint('server', 'port', fallback=9998)
         self.clients: Dict[str, Client] = {}
         self.client_counter = 0
         self.running = True
         self.loop = None
-        self.config = self.load_config()
         
         # 插件目录
-        self.plugin_dir = Path('cybercorp_node/plugins')
+        self.plugin_dir = Path(os.path.dirname(__file__)) / 'plugins'
         self.plugin_dir.mkdir(exist_ok=True)
         
         # 配置文件监控
-        self.config_file = Path('cybercorp_node/server_config.json')
+        self.config_file = Path(os.path.dirname(__file__)) / 'server_config.json'
+        
+        # Load config after paths are set
+        self.config = self.load_config()
         
     def load_config(self):
         """加载配置文件"""
-        config_file = Path('cybercorp_node/server_config.json')
-        if config_file.exists():
+        if self.config_file.exists():
             try:
                 with open(config_file, 'r', encoding='utf-8') as f:
                     return json.load(f)
@@ -282,7 +292,68 @@ class CyberCorpServer:
                 command_id = data.get('command_id')
                 logger.info(f"Received result for command {command_id}")
                 
-                # 可以在这里添加结果处理逻辑
+                # Forward result back to management clients
+                for cid, c in self.clients.items():
+                    if c.capabilities and c.capabilities.get('management'):
+                        result_msg = {
+                            'type': 'command_result',
+                            'from_client': client.id,
+                            'command_id': command_id,
+                            'result': data.get('result'),
+                            'error': data.get('error'),
+                            'timestamp': data.get('timestamp')
+                        }
+                        await self._send_message(c, result_msg)
+                
+            elif msg_type == 'request':
+                # Handle client requests
+                command = data.get('command')
+                if command == 'list_clients':
+                    # Send list of all connected clients
+                    client_list = []
+                    for cid, c in self.clients.items():
+                        client_info = {
+                            'id': c.id,
+                            'ip': c.ip,
+                            'connected_at': c.connected_at.isoformat(),
+                            'user_session': c.user_session,
+                            'hostname': c.hostname,
+                            'platform': c.platform,
+                            'capabilities': c.capabilities or {},
+                            'client_start_time': c.client_start_time.isoformat() if c.client_start_time else None
+                        }
+                        client_list.append(client_info)
+                    
+                    await self._send_message(client, {
+                        'type': 'client_list',
+                        'clients': client_list
+                    })
+                    logger.info(f"Sent client list to {client.id}: {len(client_list)} clients")
+                
+            elif msg_type == 'forward_command':
+                # Forward command from one client to another
+                target_client_id = data.get('target_client')
+                command_data = data.get('command')
+                
+                if target_client_id and command_data:
+                    if target_client_id in self.clients:
+                        target_client = self.clients[target_client_id]
+                        # Add source client info
+                        command_data['from_client'] = client.id
+                        await self._send_message(target_client, command_data)
+                        logger.info(f"Forwarded command from {client.id} to {target_client_id}")
+                        
+                        # Send acknowledgment
+                        await self._send_message(client, {
+                            'type': 'forward_ack',
+                            'target_client': target_client_id,
+                            'status': 'sent'
+                        })
+                    else:
+                        await self._send_message(client, {
+                            'type': 'error',
+                            'message': f'Target client {target_client_id} not found'
+                        })
                 
         except json.JSONDecodeError:
             logger.error(f"Invalid JSON from client {client.id}")
@@ -387,7 +458,7 @@ def create_default_config():
         }
     }
     
-    config_file = Path('cybercorp_node/server_config.json')
+    config_file = Path(__file__).parent / 'server_config.json'
     with open(config_file, 'w', encoding='utf-8') as f:
         json.dump(config, f, indent=2)
     
@@ -395,7 +466,7 @@ def create_default_config():
 
 # 创建示例插件
 def create_example_plugin():
-    plugin_dir = Path('cybercorp_node/plugins')
+    plugin_dir = Path(__file__).parent / 'plugins'
     plugin_dir.mkdir(exist_ok=True)
     
     example_plugin = plugin_dir / 'example_commands.py'
@@ -431,10 +502,11 @@ def register_commands(register_func):
 
 if __name__ == "__main__":
     # 创建默认配置和插件
-    if not Path('cybercorp_node/server_config.json').exists():
+    base_dir = Path(__file__).parent
+    if not (base_dir / 'server_config.json').exists():
         create_default_config()
     
-    if not Path('cybercorp_node/plugins/example_commands.py').exists():
+    if not (base_dir / 'plugins' / 'example_commands.py').exists():
         create_example_plugin()
     
     # 启动服务器

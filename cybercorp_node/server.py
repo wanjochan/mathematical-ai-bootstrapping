@@ -12,6 +12,8 @@ from datetime import datetime
 from typing import Dict, Any, Optional
 from dataclasses import dataclass, asdict
 from enum import Enum
+import os
+import configparser
 
 logging.basicConfig(
     level=logging.INFO,
@@ -52,21 +54,39 @@ class Client:
     last_heartbeat: datetime
     user_session: Optional[str] = None
     capabilities: Dict[str, bool] = None
-
+    hostname: Optional[str] = None
+    platform: Optional[str] = None
+    client_start_time: Optional[datetime] = None
+    
     def to_dict(self):
         return {
             'id': self.id,
             'ip': self.ip,
             'connected_at': self.connected_at.isoformat(),
             'last_heartbeat': self.last_heartbeat.isoformat(),
+            'connection_duration': str(datetime.now() - self.connected_at),
             'user_session': self.user_session,
+            'hostname': self.hostname,
+            'platform': self.platform,
+            'client_start_time': self.client_start_time.isoformat() if self.client_start_time else None,
             'capabilities': self.capabilities or {}
         }
 
 class CyberCorpServer:
-    def __init__(self, host='0.0.0.0', port=8888):
-        self.host = host
-        self.port = port
+    def __init__(self, host=None, port=None):
+        # Load configuration
+        self.config = configparser.ConfigParser()
+        config_path = os.path.join(os.path.dirname(__file__), 'config.ini')
+        
+        if os.path.exists(config_path):
+            self.config.read(config_path)
+            logger.info(f"Loaded configuration from {config_path}")
+        else:
+            logger.warning(f"Config file not found at {config_path}, using defaults")
+        
+        # Server configuration with fallbacks
+        self.host = host or self.config.get('server', 'host', fallback='0.0.0.0')
+        self.port = port or self.config.getint('server', 'port', fallback=9998)  # Changed default port
         self.clients: Dict[str, Client] = {}
         self.client_counter = 0
         self.command_queue: Dict[str, list] = {}  # Client ID -> Command queue
@@ -142,10 +162,13 @@ class CyberCorpServer:
                 await self._send_message(client, {'type': 'heartbeat_ack'})
                 
             elif msg_type == 'register':
-                # Client registration with capabilities
+                # Client registration with enhanced info
                 client.user_session = data.get('user_session')
                 client.capabilities = data.get('capabilities', {})
-                logger.info(f"Client {client.id} registered: session={client.user_session}, capabilities={client.capabilities}")
+                client.hostname = data.get('system_info', {}).get('hostname')
+                client.platform = data.get('system_info', {}).get('platform')
+                client.client_start_time = datetime.fromisoformat(data.get('client_start_time')) if data.get('client_start_time') else None
+                logger.info(f"Client {client.id} registered: user={client.user_session}, host={client.hostname}")
                 
             elif msg_type == 'command_result':
                 # Store command result
@@ -157,6 +180,31 @@ class CyberCorpServer:
             elif msg_type == 'status':
                 # Client status update
                 logger.info(f"Client {client.id} status: {data.get('status')}")
+                
+            elif msg_type == 'request':
+                # Handle client requests
+                command = data.get('command')
+                if command == 'list_clients':
+                    # Send list of all connected clients
+                    client_list = []
+                    for cid, c in self.clients.items():
+                        client_info = {
+                            'id': c.id,
+                            'ip': c.ip,
+                            'connected_at': c.connected_at.isoformat(),
+                            'user_session': c.user_session,
+                            'hostname': c.hostname,
+                            'platform': c.platform,
+                            'capabilities': c.capabilities or {},
+                            'client_start_time': c.client_start_time.isoformat() if c.client_start_time else None
+                        }
+                        client_list.append(client_info)
+                    
+                    await self._send_message(client, {
+                        'type': 'client_list',
+                        'clients': client_list
+                    })
+                    logger.info(f"Sent client list to {client.id}: {len(client_list)} clients")
                 
         except json.JSONDecodeError:
             logger.error(f"Invalid JSON from client {client.id}")
@@ -258,8 +306,16 @@ class CyberCorpServer:
                     
                 elif cmd == 'list':
                     print(f"\nConnected clients ({len(self.clients)}):")
+                    print("-" * 80)
                     for client_id, client in self.clients.items():
-                        print(f"  {client_id}: {client.ip} (session: {client.user_session})")
+                        info = client.to_dict()
+                        print(f"  ID: {client_id}")
+                        print(f"    User: {info['user_session']} @ {info['hostname']}")
+                        print(f"    IP: {info['ip']}")
+                        print(f"    Connected: {info['connection_duration']} ago")
+                        print(f"    Platform: {info['platform']}")
+                        print(f"    Capabilities: {', '.join(k for k, v in info['capabilities'].items() if v)}")
+                        print()
                         
                 elif cmd == 'info' and len(parts) > 1:
                     client_id = parts[1]

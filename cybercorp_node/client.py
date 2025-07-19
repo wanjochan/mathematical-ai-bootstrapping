@@ -14,6 +14,7 @@ from datetime import datetime
 from typing import Optional, Dict, Any
 import subprocess
 import base64
+import configparser
 
 # Windows-specific imports
 if platform.system() == 'Windows':
@@ -186,13 +187,28 @@ class VSCodeController:
 
 class CyberCorpClient:
     def __init__(self, server_url=None):
-        # Allow environment variable override for easier configuration
-        self.server_url = server_url or os.environ.get('CYBERCORP_SERVER', 'ws://localhost:8888')
+        # Load configuration
+        self.config = configparser.ConfigParser()
+        config_path = os.path.join(os.path.dirname(__file__), 'config.ini')
+        
+        if os.path.exists(config_path):
+            self.config.read(config_path)
+            logger.info(f"Loaded configuration from {config_path}")
+        
+        # Client configuration with fallbacks
+        server_host = self.config.get('client', 'server_host', fallback='localhost')
+        server_port = self.config.getint('client', 'server_port', fallback=9998)
+        
+        # Allow URL override, then config, then environment
+        self.server_url = server_url or os.environ.get('CYBERCORP_SERVER', f'ws://{server_host}:{server_port}')
+        self.reconnect_delay = self.config.getint('client', 'reconnect_interval', fallback=5)
+        self.heartbeat_interval = self.config.getint('client', 'heartbeat_interval', fallback=30)
         self.client_id = None
         self.ws = None
         self.running = True
         self.vscode_controller = VSCodeController()
         self.reconnect_delay = 5
+        self.start_time = datetime.now()
         
     async def connect(self):
         """Connect to control server with auto-reconnect"""
@@ -236,6 +252,7 @@ class CyberCorpClient:
         registration = {
             'type': 'register',
             'user_session': os.environ.get('USERNAME', 'unknown'),
+            'client_start_time': self.start_time.isoformat(),
             'capabilities': {
                 'vscode_control': True,
                 'ui_automation': True,
@@ -256,7 +273,7 @@ class CyberCorpClient:
         """Send periodic heartbeats"""
         while True:
             try:
-                await asyncio.sleep(30)
+                await asyncio.sleep(self.heartbeat_interval)
                 await self.ws.send(json.dumps({'type': 'heartbeat'}))
             except:
                 break

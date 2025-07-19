@@ -7,3 +7,7 @@ backups/
 cybercorp_node/node_modules/
 cybercorp_nodeserver/node_modules/
 nul
+
+# Temporary runtime files
+/var/
+cybercorp_node/var/

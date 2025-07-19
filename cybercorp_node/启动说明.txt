@@ -1,0 +1,63 @@
+CyberCorp Node 启动说明
+=======================
+
+一、在控制端（您当前的用户）启动服务器
+-----------------------------------
+1. 打开命令行，进入 cybercorp_node 目录
+2. 运行：python server.py
+3. 服务器将在 8888 端口启动
+
+二、在另一个 Windows 用户启动受控端
+-----------------------------------
+
+方法1：直接登录另一个用户运行
+1. 切换到另一个 Windows 用户账户
+2. 将整个 cybercorp_node 文件夹复制到那个用户可访问的位置
+3. 安装依赖：pip install -r requirements.txt
+4. 运行客户端：
+   - 如果服务器在同一台机器：python client.py
+   - 如果服务器在不同机器：
+     先编辑 client.py，修改第 299 行：
+     从：server_url='ws://localhost:8888'
+     改为：server_url='ws://控制端IP:8888'
+     然后运行：python client.py
+
+方法2：使用 PowerShell 远程启动（需要管理员权限）
+1. 以管理员身份运行 PowerShell
+2. 运行命令：
+   .\start_remote_session.ps1 -Username "目标用户名" -Password "密码" -ServerIP "控制端IP"
+
+方法3：使用任务计划程序
+1. 打开任务计划程序
+2. 创建基本任务
+3. 触发器：用户登录时
+4. 操作：启动程序
+   - 程序：python.exe
+   - 参数：C:\路径\cybercorp_node\client.py
+5. 使用目标用户的凭据运行
+
+三、测试连接
+------------
+1. 在服务器控制台输入：list
+   应该看到连接的客户端
+
+2. 测试 VSCode 控制：
+   server> vscode client_0
+   vscode> content
+
+四、常见问题
+------------
+1. 连接失败：检查防火墙是否允许 8888 端口
+2. 找不到 VSCode：确保目标用户已打开 VSCode
+3. 权限问题：客户端需要 UI 自动化权限
+
+五、快速命令参考
+----------------
+# 服务器端
+python server.py
+
+# 客户端（同机器）
+python client.py
+
+# 客户端（不同机器，需要先修改 client.py 中的服务器地址）
+python client.py

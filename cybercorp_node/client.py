@@ -358,6 +358,50 @@ class CyberCorpClient:
                 text = params.get('text', '')
                 result = self.vscode_controller.type_text(text)
                 
+            # Background operations (no window activation)
+            elif command == 'background_input':
+                element_name = params.get('element_name', '')
+                text = params.get('text', '')
+                
+                if self.vscode_controller.vscode_window:
+                    try:
+                        # Try to find element by name
+                        elements = self.vscode_controller.vscode_window.descendants()
+                        for elem in elements:
+                            if elem.window_text() == element_name:
+                                elem.set_text(text)
+                                result = True
+                                break
+                        else:
+                            # If not found by exact name, try type_text without activation
+                            escaped_text = text.replace('{', '{{').replace('}', '}}')
+                            send_keys(escaped_text)
+                            result = True
+                    except Exception as e:
+                        logger.error(f"Background input error: {e}")
+                        result = False
+                else:
+                    result = False
+                    
+            elif command == 'background_click':
+                element_name = params.get('element_name', '')
+                
+                if self.vscode_controller.vscode_window:
+                    try:
+                        elements = self.vscode_controller.vscode_window.descendants()
+                        for elem in elements:
+                            if elem.window_text() == element_name:
+                                elem.click_input()
+                                result = True
+                                break
+                        else:
+                            result = False
+                    except Exception as e:
+                        logger.error(f"Background click error: {e}")
+                        result = False
+                else:
+                    result = False
+                
             else:
                 error = f"Unknown command: {command}"
                 

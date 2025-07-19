@@ -1,180 +1,286 @@
-# CyberCorp Stable - Cross-User Session Control System
+# CyberCorp Node - 跨用户会话控制系统
 
-A robust system for controlling VSCode and development environments across different Windows user sessions.
+一个强大的系统，用于跨不同 Windows 用户会话控制 VSCode 和开发环境。
 
-## Features
+## 核心特性
 
-- **Stable WebSocket Connection**: Auto-reconnect, heartbeat monitoring
-- **Cross-User Session Support**: Control VSCode in another user's session
-- **VSCode Integration**: Read content, send keystrokes, execute commands
-- **UI Automation**: Access window content even when in background
-- **Remote Control**: Mouse, keyboard, and screenshot capabilities
-- **Command Queue**: Reliable command execution with status feedback
+- **稳定的 WebSocket 连接**：自动重连、心跳监控
+- **跨用户会话支持**：控制其他用户会话中的 VSCode
+- **VSCode 集成**：读取内容、发送按键、执行命令
+- **UI 自动化**：即使在后台也能访问窗口内容
+- **远程控制**：鼠标、键盘和截屏功能
+- **热重载支持**：服务器端插件和配置热更新
+- **后台 RPA**：无需切换前台窗口的自动化操作
 
-## Architecture
+## 系统架构
 
 ```
 ┌─────────────────────┐         ┌─────────────────────┐
-│   Control Machine   │         │   Target Machine    │
-│                     │         │  (Different User)   │
+│   中控端 (Server)    │         │   受控端 (Client)    │
+│                     │         │  (不同用户会话)      │
 │  ┌───────────────┐  │         │  ┌───────────────┐  │
 │  │ CyberCorp     │  │ Network │  │ CyberCorp     │  │
 │  │ Server        │◄─┼─────────┼──┤ Client        │  │
-│  │ (Port 8888)   │  │   WS    │  │               │  │
+│  │ (Port 9998)   │  │   WS    │  │               │  │
 │  └───────────────┘  │         │  └───────┬───────┘  │
 │                     │         │          │           │
 │  ┌───────────────┐  │         │  ┌───────▼───────┐  │
-│  │ Console       │  │         │  │ VSCode        │  │
-│  │ Interface     │  │         │  │ (Controlled)  │  │
+│  │ Hot Reload    │  │         │  │ VSCode        │  │
+│  │ Plugins       │  │         │  │ (Controlled)  │  │
 │  └───────────────┘  │         │  └───────────────┘  │
 └─────────────────────┘         └─────────────────────┘
 ```
 
-## Installation
+## 快速开始
 
-1. **Run as Administrator**:
-   ```batch
-   setup_service.bat
-   ```
+### 1. 配置端口 (config.ini)
 
-2. **Manual Installation**:
-   ```bash
-   pip install -r requirements.txt
-   ```
+```ini
+[server]
+port = 9998
 
-## Usage
+[client]
+server_port = 9998
+```
 
-### 1. Start the Control Server
+### 2. 启动中控端
 
-On your control machine:
 ```batch
-python server.py
+# 标准服务器
+start_server_clean.bat
+
+# 或热重载服务器（推荐）
+start_hotreload_server.bat
 ```
 
-Or use the installed service:
+### 3. 启动受控端
+
+在目标用户会话中：
 ```batch
-C:\CyberCorp\start_server.bat
+start_client_clean.bat
+# 或
+client_9998.bat
 ```
 
-### 2. Start the Client in Target Session
+### 4. 使用统一 CLI 工具
 
-**Option A: Direct Login**
-Log into the target user account and run:
-```batch
-python client.py
+```bash
+# 查看系统状态
+python cybercorp_cli.py status
+
+# 列出所有客户端
+python cybercorp_cli.py list -c
+
+# 发送单个命令
+python cybercorp_cli.py command wjchk get_processes
+
+# 交互式控制
+python cybercorp_cli.py control wjchk
+
+# Roo Code 操作
+python cybercorp_cli.py roo wjchk send -m "你的消息"
+python cybercorp_cli.py roo wjchk check
+
+# 批量执行命令
+python cybercorp_cli.py batch wjchk examples/batch_commands.json
 ```
 
-**Option B: Remote Start (PowerShell)**
-From administrator account:
-```powershell
-.\start_remote_session.ps1 -Username "TargetUser" -Password "Password" -ServerIP "192.168.1.100"
+## 新的工具类架构
+
+### 工具类说明
+
+系统已重构为模块化的工具类，位于 `utils/` 目录：
+
+1. **CyberCorpClient** - WebSocket 客户端基类
+   - 处理连接、注册、心跳
+   - 统一的请求/响应模式
+
+2. **ClientManager** - 客户端管理
+   - 查找和列出客户端
+   - 等待客户端连接
+   - 按能力过滤客户端
+
+3. **CommandForwarder** - 命令转发
+   - 向目标客户端发送命令
+   - 批量执行和重试机制
+   - 广播命令到多个客户端
+
+4. **DataPersistence** - 数据持久化
+   - 时间戳文件保存
+   - JSON 数据管理
+   - 文件比较和清理
+
+5. **VSCodeUIAnalyzer** - UI 结构分析
+   - 解析 VSCode UI 元素
+   - 查找 Roo Code 组件
+   - 提取文本内容
+
+6. **VSCodeAutomation** - VSCode 自动化
+   - 后台输入和点击
+   - 窗口内容获取
+   - Roo Code 交互
+
+7. **ResponseHandler** - 响应处理
+   - 统一的错误处理
+   - 重试机制
+   - 响应验证
+
+## RPA 经验总结
+
+### 1. 后台操作优于前台切换
+
+**问题**：窗口激活和前台切换容易失败，引入不可预知的错误。
+
+**解决方案**：使用 UI Automation 的后台 API：
+```bash
+# 后台输入文本（无需激活窗口）
+python cybercorp_cli.py command wjchk background_input --params '{"element_name":"Type your task here...", "text":"你的消息"}'
+
+# 后台点击按钮
+python cybercorp_cli.py command wjchk background_click --params '{"element_name":"Send message"}'
 ```
 
-### 3. Control VSCode
+### 2. UI 元素定位策略
 
-In the server console:
+**最佳实践**：
+- 优先使用元素名称和类型组合定位
+- 保存 UI 结构快照用于调试
+- 实现多种定位策略的降级机制
 
-```
-server> list
-Connected clients (1):
-  client_0: 192.168.1.101 (session: TargetUser)
+### 3. 任务追踪和验证
 
-server> vscode client_0
-=== VSCode Control Mode ===
+**问题**：发送的任务可能被其他任务替换或进入队列。
 
-vscode> content
-[Gets current VSCode window content including Roo Code dialog]
+**解决方案**：
+- 操作前后保存 UI 状态
+- 实现任务 ID 和状态追踪
+- 定期检查任务处理结果
 
-vscode> type Hello from remote!
-[Types text in VSCode]
+## 高级功能
 
-vscode> cmd workbench.action.files.save
-[Saves current file]
-```
+### 热重载系统
 
-## Available Commands
+服务器支持插件热加载，无需重启：
 
-### Server Commands
-- `list` - List connected clients
-- `info <client_id>` - Show client details
-- `cmd <client_id> <command>` - Send command
-- `vscode <client_id>` - Enter VSCode control mode
-- `help` - Show help
-- `exit` - Stop server
+1. 将插件放入 `plugins/` 目录
+2. 插件自动加载并注册命令
+3. 配置文件 `server_config.json` 修改后自动生效
 
-### VSCode Control Commands
-- `content` - Get VSCode window content
-- `type <text>` - Type text in editor
-- `cmd <command>` - Execute VSCode command
-- `back` - Return to main menu
+### 后台 RPA 操作
 
-### Available Client Commands
-- `get_windows` - List all windows
-- `get_window_content` - Get VSCode content
-- `activate_window` - Bring VSCode to front
-- `send_keys` - Send keystrokes
-- `send_mouse_click` - Click at coordinates
-- `take_screenshot` - Capture screen
-- `get_processes` - List processes
-- `vscode_get_content` - Get VSCode content
-- `vscode_type_text` - Type in VSCode
-- `vscode_send_command` - Execute VSCode command
+使用 `background_roo_rpa.py` 实现无窗口切换的自动化：
 
-## Security Considerations
-
-1. **Firewall**: Opens port 8888 for WebSocket communication
-2. **Authentication**: Currently no authentication - use on trusted networks only
-3. **Permissions**: Client needs UI automation permissions
-4. **User Sessions**: Requires appropriate permissions for cross-session control
-
-## Troubleshooting
-
-### Client Won't Connect
-- Check firewall settings
-- Verify server is running on port 8888
-- Ensure network connectivity
-
-### VSCode Not Found
-- Make sure VSCode is running in target session
-- Client must run in same session as VSCode
-- Check UI automation permissions
-
-### Commands Not Working
-- VSCode window must exist (can be minimized)
-- Some commands require window activation
-- Check client logs for errors
-
-## Development
-
-### Adding New Commands
-
-1. Add command type to server.py:
 ```python
-class CommandType(Enum):
-    MY_COMMAND = "my_command"
+# 完整的后台 Roo Code 交互
+from background_roo_rpa import BackgroundRooCodeRPA
+
+rpa = BackgroundRooCodeRPA("wjchk")
+await rpa.execute_background_task("你的任务描述")
 ```
 
-2. Implement handler in client.py:
+### 插件开发
+
+创建新插件示例 (`plugins/my_plugin.py`)：
+
 ```python
-elif command == 'my_command':
-    result = self._my_command_handler(params)
+from server_hotreload import register_command
+
+def handle_my_command(client, params):
+    # 处理逻辑
+    return {'success': True, 'result': 'Done'}
+
+register_command('my_command', handle_my_command)
 ```
 
-### Logging
+## 可用命令列表
 
-Logs are displayed in console. For file logging, modify:
-```python
-logging.basicConfig(
-    filename='cybercorp.log',
-    level=logging.INFO
-)
+### 系统信息类
+- `get_system_info` - 获取系统信息
+- `get_processes` - 获取进程列表
+- `get_windows` - 获取窗口列表
+- `get_screen_size` - 获取屏幕尺寸
+
+### VSCode 控制类
+- `vscode_get_content` - 获取 VSCode 内容结构
+- `vscode_type_text` - 输入文本
+- `vscode_send_command` - 执行 VSCode 命令
+- `activate_window` - 激活窗口（不推荐）
+
+### 后台操作类（推荐）
+- `background_input` - 后台输入文本
+- `background_click` - 后台点击元素
+- `send_keys` - 发送按键组合
+- `take_screenshot` - 截屏
+
+## 故障排除
+
+### 客户端无法连接
+1. 检查 `config.ini` 端口设置（应为 9998）
+2. 确认防火墙允许该端口
+3. 验证服务器正在运行：`python check_status.py`
+
+### 找不到 VSCode
+1. 确保 VSCode 在目标会话中运行
+2. 客户端必须在 VSCode 相同会话中
+3. 检查 UI 自动化权限
+
+### RPA 操作失败
+1. 使用后台操作而非前台激活
+2. 保存 UI 结构用于调试（查看 `var/` 目录）
+3. 实现重试机制和多种操作策略
+
+## 最佳实践
+
+1. **使用配置文件**：所有端口和设置通过 `config.ini` 管理
+2. **后台操作优先**：避免窗口切换，使用 `background_*` 命令
+3. **调试文件管理**：临时文件保存在 `var/` 目录，已加入 `.gitignore`
+4. **热重载开发**：使用 `server_hotreload.py` 支持快速迭代
+5. **统一 CLI 入口**：使用 `cybercorp_cli.py` 进行所有操作
+
+## 开发路线图
+
+- [x] WebSocket 稳定连接
+- [x] 跨会话控制
+- [x] 热重载支持
+- [x] 后台 RPA 操作
+- [x] 配置文件管理
+- [x] 抽象代码到工具类架构
+- [x] 统一 CLI 工具 (cybercorp_cli.py)
+- [ ] 任务队列和状态追踪
+- [ ] 可视化管理界面
+- [ ] 录制和回放功能
+- [ ] 多 VSCode 实例支持
+- [ ] 智能等待和重试机制
+
+## 安全注意事项
+
+1. **网络安全**：当前无认证机制，仅在可信网络使用
+2. **权限控制**：客户端需要 UI 自动化权限
+3. **会话隔离**：跨会话操作需要适当的系统权限
+4. **敏感信息**：避免在代码中硬编码敏感信息
+
+## 从旧脚本迁移
+
+如果你之前使用单独的测试脚本，请迁移到新的 CLI 工具：
+
+```bash
+# 运行迁移向导
+python migrate_to_cli.py
+
+# 查看 CLI 帮助
+python cybercorp_cli.py --help
 ```
 
-## Future Enhancements
+主要变化：
+- 所有 `test_*.py` 脚本功能集成到 `cybercorp_cli.py`
+- 通用功能抽象到 `utils/` 工具类
+- 统一的错误处理和输出格式
+- 支持批量操作和交互模式
 
-- [ ] SSL/TLS encryption
-- [ ] Authentication system
-- [ ] Multiple VSCode instance support
-- [ ] Recording and playback
-- [ ] Web-based control panel
-- [ ] Linux/Mac support
+## 贡献指南
+
+1. 使用工具类而非重复代码
+2. 新功能通过扩展 CLI 命令实现
+3. 插件放在 `plugins/` 目录
+4. 调试输出保存到 `var/` 目录
+5. 更新文档记录新功能

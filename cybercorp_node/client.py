@@ -28,6 +28,12 @@ if platform.system() == 'Windows':
     import pywinauto
     from pywinauto import Desktop, Application
     from pywinauto.keyboard import send_keys
+    
+    # Import new backends
+    import sys
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    from utils.win32_backend import Win32Backend
+    from utils.ocr_backend import OCRBackend
 
 logging.basicConfig(
     level=logging.INFO,
@@ -257,6 +263,9 @@ class CyberCorpClient:
                 'vscode_control': True,
                 'ui_automation': True,
                 'screenshot': True,
+                'mouse_drag': True,
+                'ocr': True,
+                'win32_api': True,
                 'input_control': True
             },
             'system_info': {
@@ -401,6 +410,111 @@ class CyberCorpClient:
                         result = False
                 else:
                     result = False
+                    
+            # Mouse drag operations
+            elif command == 'mouse_drag':
+                start_x = params.get('start_x', 0)
+                start_y = params.get('start_y', 0)
+                end_x = params.get('end_x', 0)
+                end_y = params.get('end_y', 0)
+                duration = params.get('duration', 1.0)
+                button = params.get('button', 'left')
+                humanize = params.get('humanize', True)
+                
+                try:
+                    win32_backend = Win32Backend()
+                    result = win32_backend.mouse_drag(
+                        start_x, start_y, end_x, end_y,
+                        duration=duration, button=button, humanize=humanize
+                    )
+                except Exception as e:
+                    logger.error(f"Mouse drag error: {e}")
+                    result = False
+                    
+            # OCR operations
+            elif command == 'ocr_screen':
+                x = params.get('x', 0)
+                y = params.get('y', 0)
+                width = params.get('width', 0)
+                height = params.get('height', 0)
+                engine = params.get('engine', None)  # None for auto-select
+                
+                try:
+                    # Take screenshot of specified region
+                    if width > 0 and height > 0:
+                        screenshot = ImageGrab.grab(bbox=(x, y, x + width, y + height))
+                    else:
+                        screenshot = ImageGrab.grab()
+                        
+                    # Perform OCR
+                    ocr_backend = OCRBackend()
+                    detections = ocr_backend.detect_text(screenshot, engine=engine)
+                    
+                    # Format results
+                    result = {
+                        'success': True,
+                        'detections': detections,
+                        'available_engines': list(ocr_backend.available_engines.keys())
+                    }
+                except Exception as e:
+                    logger.error(f"OCR error: {e}")
+                    result = {'success': False, 'error': str(e)}
+                    
+            elif command == 'ocr_window':
+                hwnd = params.get('hwnd', None)
+                engine = params.get('engine', None)
+                
+                try:
+                    if hwnd:
+                        # Capture specific window
+                        win32_backend = Win32Backend()
+                        image = win32_backend.capture_window(hwnd)
+                        
+                        if image is not None:
+                            # Perform OCR
+                            ocr_backend = OCRBackend()
+                            detections = ocr_backend.detect_text(image, engine=engine)
+                            
+                            result = {
+                                'success': True,
+                                'detections': detections
+                            }
+                        else:
+                            result = {'success': False, 'error': 'Failed to capture window'}
+                    else:
+                        result = {'success': False, 'error': 'No window handle provided'}
+                except Exception as e:
+                    logger.error(f"Window OCR error: {e}")
+                    result = {'success': False, 'error': str(e)}
+                    
+            # Win32 API operations
+            elif command == 'win32_find_window':
+                class_name = params.get('class_name', None)
+                window_name = params.get('window_name', None)
+                
+                try:
+                    win32_backend = Win32Backend()
+                    hwnd = win32_backend.find_window(class_name, window_name)
+                    if hwnd:
+                        info = win32_backend.get_window_info(hwnd)
+                        result = {'success': True, 'hwnd': hwnd, 'info': info}
+                    else:
+                        result = {'success': False, 'error': 'Window not found'}
+                except Exception as e:
+                    logger.error(f"Find window error: {e}")
+                    result = {'success': False, 'error': str(e)}
+                    
+            elif command == 'win32_send_keys':
+                keys = params.get('keys', '')
+                delay = params.get('delay', 0.01)
+                
+                try:
+                    win32_backend = Win32Backend()
+                    success = win32_backend.send_keys(keys, delay)
+                    result = {'success': success}
+                except Exception as e:
+                    logger.error(f"Send keys error: {e}")
+                    result = {'success': False, 'error': str(e)}
                 
             else:
                 error = f"Unknown command: {command}"

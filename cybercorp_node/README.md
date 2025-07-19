@@ -62,7 +62,9 @@ start_client_clean.bat
 client_9998.bat
 ```
 
-### 4. 使用统一 CLI 工具
+### 4. 使用统一工具
+
+#### 4.1 统一 CLI 工具 (cybercorp_cli.py)
 
 ```bash
 # 查看系统状态
@@ -83,6 +85,28 @@ python cybercorp_cli.py roo wjchk check
 
 # 批量执行命令
 python cybercorp_cli.py batch wjchk examples/batch_commands.json
+```
+
+#### 4.2 统一测试套件 (cybercorp_test_suite.py)
+
+```bash
+# 查看可用测试
+python cybercorp_test_suite.py
+
+# 运行单个测试
+python cybercorp_test_suite.py status -t wjchk
+
+# 运行多个测试
+python cybercorp_test_suite.py status list ocr drag -t wjchk
+
+# 并行运行测试
+python cybercorp_test_suite.py status list processes windows --parallel -t wjchk
+
+# 压力测试
+python cybercorp_test_suite.py stress --iterations 100 --command get_screen_size -t wjchk
+
+# 带参数的测试
+python cybercorp_test_suite.py ocr --screen --x 100 --y 100 --width 500 --height 300 -t wjchk
 ```
 
 ## 新的工具类架构
@@ -144,6 +168,12 @@ python cybercorp_cli.py batch wjchk examples/batch_commands.json
     - 布局分析
     - 实时性能（30+ FPS）
     - 轻量级实现
+
+11. **ParallelExecutor** - 并行任务执行框架
+    - 依赖管理
+    - 优先级调度
+    - 超时控制
+    - 支持同步/异步任务
 
 ## RPA 经验总结
 
@@ -262,7 +292,11 @@ register_command('my_command', handle_my_command)
 2. **后台操作优先**：避免窗口切换，使用 `background_*` 命令
 3. **调试文件管理**：临时文件保存在 `var/` 目录，已加入 `.gitignore`
 4. **热重载开发**：使用 `server_hotreload.py` 支持快速迭代
-5. **统一 CLI 入口**：使用 `cybercorp_cli.py` 进行所有操作
+5. **统一工具使用**：
+   - 操作命令：`cybercorp_cli.py`
+   - 测试执行：`cybercorp_test_suite.py`
+   - 并行任务：使用 `ParallelExecutor` 框架
+6. **日志管理**：客户端日志包含参数和结果采样，自动截断长内容
 
 ## 开发路线图
 

@@ -314,7 +314,11 @@ class CyberCorpClient:
         command = command_data.get('command')
         params = command_data.get('params', {})
         
-        logger.info(f"Executing command: {command}")
+        # Enhanced logging with parameter info
+        param_log = json.dumps(params, ensure_ascii=False) if params else "None"
+        if len(param_log) > 200:
+            param_log = param_log[:200] + "... (truncated)"
+        logger.info(f"Executing command: {command} | Params: {param_log}")
         
         result = None
         error = None
@@ -531,6 +535,16 @@ class CyberCorpClient:
             'error': error,
             'timestamp': datetime.now().isoformat()
         }
+        
+        # Enhanced logging for results
+        if error:
+            logger.error(f"Command '{command}' failed: {error}")
+        else:
+            # Sample result for logging
+            result_log = str(result)
+            if len(result_log) > 300:
+                result_log = result_log[:300] + "... (truncated)"
+            logger.info(f"Command '{command}' completed | Result: {result_log}")
         
         await self.ws.send(json.dumps(response))
     

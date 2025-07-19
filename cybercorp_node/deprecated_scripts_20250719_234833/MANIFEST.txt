@@ -1,0 +1,32 @@
+Deprecated CyberCorp Node Scripts
+Backed up on: 2025-07-19T23:48:33.275500
+
+These scripts have been integrated into:
+- cybercorp_cli.py (unified CLI tool)
+- cybercorp_test_suite.py (unified test suite)
+
+Deprecated files:
+- analyze_roo_task.py
+- analyze_vscode_content.py
+- check_roo_response.py
+- check_status.py
+- format_windows.py
+- get_vscode_structure.py
+- interact_with_roo_code.py
+- list_clients_now.py
+- save_window_info.py
+- send_to_roo_code.py
+- show_client_info.py
+- simple_client.py
+- simple_roo_check.py
+- simple_server.py
+- test_all_info.py
+- test_client_9998.py
+- test_connection.py
+- test_control.py
+- test_list_clients.py
+- test_multi_client.py
+- test_server_hotreload.py
+- test_server_with_list.py
+- test_simple_connection.py
+- test_stable.py

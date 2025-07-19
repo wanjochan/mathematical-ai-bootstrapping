@@ -4,3 +4,5 @@ backups/
 *.log
 *.png
 *.json
+cybercorp_node/node_modules/
+cybercorp_nodeserver/node_modules/

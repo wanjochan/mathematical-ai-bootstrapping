@@ -697,6 +697,9 @@ class CyberCorpClient:
             elif command == 'restart_client':
                 return await self._handle_restart_client(params)
                 
+            elif command == 'execute_program':
+                return await self._handle_execute_program(params)
+                
             else:
                 raise ValueError(f"Unknown command: {command}")
                 
@@ -1420,6 +1423,64 @@ class CyberCorpClient:
         except Exception as e:
             logger.error(f"Error handling restart: {e}")
             return format_error(e, error_code='RESTART_ERROR')
+    
+    async def _handle_execute_program(self, params: dict):
+        """Execute a program or command"""
+        try:
+            program = params.get('program')
+            args = params.get('args', [])
+            wait = params.get('wait', False)
+            shell = params.get('shell', False)
+            
+            if not program:
+                return format_error("No program specified", error_code='INVALID_PARAMS')
+            
+            logger.info(f"Executing program: {program} {' '.join(args) if isinstance(args, list) else args}")
+            
+            # Build command
+            if isinstance(args, list):
+                cmd = [program] + args
+            else:
+                cmd = f"{program} {args}" if args else program
+            
+            if wait:
+                # Execute and wait for completion
+                result = subprocess.run(
+                    cmd,
+                    shell=shell,
+                    capture_output=True,
+                    text=True
+                )
+                
+                return format_success(
+                    data={
+                        'returncode': result.returncode,
+                        'stdout': result.stdout,
+                        'stderr': result.stderr,
+                        'executed': program
+                    },
+                    message=f"Program executed with return code {result.returncode}"
+                )
+            else:
+                # Execute without waiting
+                process = subprocess.Popen(
+                    cmd,
+                    shell=shell,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE
+                )
+                
+                return format_success(
+                    data={
+                        'pid': process.pid,
+                        'executed': program
+                    },
+                    message=f"Program launched with PID {process.pid}"
+                )
+                
+        except Exception as e:
+            logger.error(f"Error executing program: {e}")
+            return format_error(str(e), error_code='EXECUTION_FAILED')
     
     async def shutdown(self):
         """Gracefully shutdown the client"""

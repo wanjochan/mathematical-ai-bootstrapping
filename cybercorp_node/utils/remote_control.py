@@ -10,6 +10,9 @@ from .window_cache import WindowCache
 
 logger = logging.getLogger(__name__)
 
+# Lazy import for vision integration to avoid circular dependencies
+VisionWindowAnalyzer = None
+
 
 class RemoteController:
     """High-level remote control interface"""
@@ -20,6 +23,7 @@ class RemoteController:
         self.client_id = None
         self.target_client = None
         self.window_cache = WindowCache(ttl=120)  # 2 minutes cache
+        self._vision_analyzer = None  # Lazy initialization
         
     async def connect(self, session_name: str = None):
         """Connect to server"""
@@ -173,6 +177,165 @@ class RemoteController:
         """Close connection"""
         if self.ws:
             await self.ws.close()
+            
+    # Vision Integration Methods
+    
+    def _get_vision_analyzer(self):
+        """Get vision analyzer instance (lazy initialization)"""
+        global VisionWindowAnalyzer
+        if self._vision_analyzer is None:
+            if VisionWindowAnalyzer is None:
+                try:
+                    from .vision_integration import VisionWindowAnalyzer
+                except ImportError:
+                    logger.warning("Vision integration not available")
+                    return None
+            self._vision_analyzer = VisionWindowAnalyzer(self)
+        return self._vision_analyzer
+        
+    async def analyze_window_vision(self, hwnd: int, save_visualization: bool = False) -> Optional[Dict[str, Any]]:
+        """Analyze window using vision model
+        
+        Args:
+            hwnd: Window handle
+            save_visualization: Whether to save visualization image
+            
+        Returns:
+            Analysis result dictionary or None if failed
+        """
+        analyzer = self._get_vision_analyzer()
+        if not analyzer:
+            logger.error("Vision analyzer not available")
+            return None
+            
+        try:
+            result = await analyzer.analyze_window(hwnd, save_visualization)
+            return result.__dict__ if result else None
+        except Exception as e:
+            logger.error(f"Vision analysis failed: {e}")
+            return None
+            
+    async def find_clickable_elements_vision(self, hwnd: int) -> List[Dict[str, Any]]:
+        """Find clickable elements using vision
+        
+        Args:
+            hwnd: Window handle
+            
+        Returns:
+            List of clickable elements with coordinates
+        """
+        analyzer = self._get_vision_analyzer()
+        if not analyzer:
+            return []
+            
+        try:
+            return await analyzer.find_clickable_elements(hwnd)
+        except Exception as e:
+            logger.error(f"Failed to find clickable elements: {e}")
+            return []
+            
+    async def smart_click(self, hwnd: int, element_type: str = 'button') -> bool:
+        """Smart click using vision to find element
+        
+        Args:
+            hwnd: Window handle
+            element_type: Type of element to click ('button', 'input', etc.)
+            
+        Returns:
+            Success status
+        """
+        # First activate the window
+        await self.activate_window(hwnd)
+        await asyncio.sleep(0.5)
+        
+        # Find clickable elements
+        elements = await self.find_clickable_elements_vision(hwnd)
+        
+        # Find element of requested type
+        target_element = None
+        for elem in elements:
+            if elem['type'] == element_type:
+                target_element = elem
+                break
+                
+        if not target_element:
+            logger.warning(f"No {element_type} found in window {hwnd}")
+            return False
+            
+        # Click on the element
+        x, y = target_element['center']
+        logger.info(f"Smart clicking {element_type} at ({x}, {y})")
+        return await self.click(x, y)
+        
+    async def smart_input(self, hwnd: int, text: str, input_index: int = 0) -> bool:
+        """Smart text input using vision to find input field
+        
+        Args:
+            hwnd: Window handle
+            text: Text to input
+            input_index: Index of input field if multiple exist
+            
+        Returns:
+            Success status
+        """
+        # First activate the window
+        await self.activate_window(hwnd)
+        await asyncio.sleep(0.5)
+        
+        # Find text input elements
+        analyzer = self._get_vision_analyzer()
+        if not analyzer:
+            return False
+            
+        try:
+            text_regions = await analyzer.find_text_regions(hwnd)
+            input_fields = [r for r in text_regions if r['type'] == 'input']
+            
+            if not input_fields:
+                logger.warning(f"No input fields found in window {hwnd}")
+                return False
+                
+            if input_index >= len(input_fields):
+                logger.warning(f"Input index {input_index} out of range (found {len(input_fields)} inputs)")
+                input_index = 0
+                
+            target_input = input_fields[input_index]
+            x, y = target_input['center']
+            
+            # Click on input field
+            logger.info(f"Clicking input field at ({x}, {y})")
+            await self.click(x, y)
+            await asyncio.sleep(0.3)
+            
+            # Clear and type text
+            await self.send_keys('^a{DELETE}')  # Select all and delete
+            await asyncio.sleep(0.2)
+            
+            return await self.send_keys(text)
+            
+        except Exception as e:
+            logger.error(f"Smart input failed: {e}")
+            return False
+            
+    async def get_window_summary_vision(self, hwnd: int) -> Optional[str]:
+        """Get human-readable summary of window content using vision
+        
+        Args:
+            hwnd: Window handle
+            
+        Returns:
+            Text summary or None if failed
+        """
+        analyzer = self._get_vision_analyzer()
+        if not analyzer:
+            return None
+            
+        try:
+            result = await analyzer.analyze_window(hwnd)
+            return analyzer.export_analysis(result, 'summary') if result else None
+        except Exception as e:
+            logger.error(f"Failed to get window summary: {e}")
+            return None
             
 
 class WindowController:

@@ -221,7 +221,7 @@ flowchart TD
 
 #### ❌ 禁止的文件命名
 - `file_new.ext`, `file_old.ext` → 用Git历史管理
-- `script_v2.sh`, `tool_final.c` → 避免版本后缀
+- `script_v2.sh`, `tool_final.c`, `xxxx_enhanced.c`, `xxxx_advance.c` → 避免胡乱的版本后缀!
 - `temp_*.anything` → 临时文件不应提交
 - `CHANGELOG.md` → 更新记录应在 worknotes_{work_id}.md 中
 - `RELEASE_NOTES.md` → 发布说明应在工作文档中记录

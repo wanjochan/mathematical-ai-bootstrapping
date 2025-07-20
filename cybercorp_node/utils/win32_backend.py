@@ -10,7 +10,7 @@ import win32clipboard
 import pywintypes
 from typing import Optional, List, Tuple, Dict, Any
 import time
-import numpy as np
+import random
 
 
 class Win32Backend:
@@ -289,8 +289,8 @@ class Win32Backend:
             List of points along curve
         """
         # Generate control points with some randomness
-        mid_x = (start[0] + end[0]) / 2 + np.random.randint(-50, 50)
-        mid_y = (start[1] + end[1]) / 2 + np.random.randint(-50, 50)
+        mid_x = (start[0] + end[0]) / 2 + random.randint(-50, 50)
+        mid_y = (start[1] + end[1]) / 2 + random.randint(-50, 50)
         
         # Number of points based on duration
         num_points = max(int(duration * 60), 20)
@@ -304,8 +304,8 @@ class Win32Backend:
             
             # Add small random jitter
             if 0.1 < t < 0.9:  # Not at start or end
-                x += np.random.randint(-2, 3)
-                y += np.random.randint(-2, 3)
+                x += random.randint(-2, 3)
+                y += random.randint(-2, 3)
                 
             points.append((x, y))
             
@@ -435,7 +435,7 @@ class Win32Backend:
         
     # Screen Capture Functions
     
-    def capture_window(self, hwnd: int) -> Optional[np.ndarray]:
+    def capture_window(self, hwnd: int) -> Optional[bytes]:
         """Capture window content as numpy array
         
         Args:
@@ -468,19 +468,14 @@ class Win32Backend:
                 bmpinfo = save_bitmap.GetInfo()
                 bmpstr = save_bitmap.GetBitmapBits(True)
                 
-                image = np.frombuffer(bmpstr, dtype='uint8')
-                image.shape = (height, width, 4)
-                
-                # Convert BGRA to RGB
-                image = image[:, :, [2, 1, 0]]
-                
                 # Cleanup
                 win32gui.DeleteObject(save_bitmap.GetHandle())
                 save_dc.DeleteDC()
                 mfc_dc.DeleteDC()
                 win32gui.ReleaseDC(hwnd, hwnd_dc)
                 
-                return image
+                # Return raw bitmap data
+                return bmpstr
             else:
                 return None
                 

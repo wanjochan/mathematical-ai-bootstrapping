@@ -32,8 +32,9 @@ if platform.system() == 'Windows':
     # Import new backends
     import sys
     sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-    from utils.win32_backend import Win32Backend
-    from utils.ocr_backend import OCRBackend
+    # Import backends on demand to avoid startup errors
+    Win32Backend = None
+    OCRBackend = None
 
 logging.basicConfig(
     level=logging.INFO,
@@ -310,6 +311,7 @@ class CyberCorpClient:
     
     async def _execute_command(self, command_data: dict):
         """Execute command from server"""
+        global Win32Backend, OCRBackend
         command_id = command_data.get('command_id')
         command = command_data.get('command')
         params = command_data.get('params', {})
@@ -426,6 +428,9 @@ class CyberCorpClient:
                 humanize = params.get('humanize', True)
                 
                 try:
+                    # Import on demand
+                    if Win32Backend is None:
+                        from utils.win32_backend import Win32Backend
                     win32_backend = Win32Backend()
                     result = win32_backend.mouse_drag(
                         start_x, start_y, end_x, end_y,
@@ -451,6 +456,9 @@ class CyberCorpClient:
                         screenshot = ImageGrab.grab()
                         
                     # Perform OCR
+                    # Import on demand
+                    if OCRBackend is None:
+                        from utils.ocr_backend import OCRBackend
                     ocr_backend = OCRBackend()
                     detections = ocr_backend.detect_text(screenshot, engine=engine)
                     
@@ -471,6 +479,9 @@ class CyberCorpClient:
                 try:
                     if hwnd:
                         # Capture specific window
+                        # Import on demand
+                        if Win32Backend is None:
+                            from utils.win32_backend import Win32Backend
                         win32_backend = Win32Backend()
                         image = win32_backend.capture_window(hwnd)
                         
@@ -497,6 +508,9 @@ class CyberCorpClient:
                 window_name = params.get('window_name', None)
                 
                 try:
+                    # Import on demand
+                    if Win32Backend is None:
+                        from utils.win32_backend import Win32Backend
                     win32_backend = Win32Backend()
                     hwnd = win32_backend.find_window(class_name, window_name)
                     if hwnd:
@@ -513,12 +527,22 @@ class CyberCorpClient:
                 delay = params.get('delay', 0.01)
                 
                 try:
+                    # Import on demand
+                    if Win32Backend is None:
+                        from utils.win32_backend import Win32Backend
                     win32_backend = Win32Backend()
                     success = win32_backend.send_keys(keys, delay)
                     result = {'success': success}
                 except Exception as e:
                     logger.error(f"Send keys error: {e}")
                     result = {'success': False, 'error': str(e)}
+                    
+            elif command == 'get_window_uia_structure':
+                hwnd = params.get('hwnd')
+                if hwnd:
+                    result = self._get_window_uia_structure(hwnd)
+                else:
+                    error = "Missing hwnd parameter"
                 
             else:
                 error = f"Unknown command: {command}"
@@ -614,6 +638,92 @@ class CyberCorpClient:
             'memory_gb': round(psutil.virtual_memory().total / 1024 / 1024 / 1024, 2),
             'user': os.environ.get('USERNAME', 'unknown')
         }
+    
+    def _get_window_uia_structure(self, hwnd):
+        """Get complete UIA structure of any window"""
+        try:
+            from pywinauto import Application
+            
+            # Connect to the window
+            app = Application(backend="uia").connect(handle=hwnd)
+            window = app.window(handle=hwnd)
+            
+            def extract_structure(element, depth=0, max_depth=15):
+                """Extract complete element structure"""
+                if depth > max_depth:
+                    return {"error": "Max depth reached"}
+                    
+                try:
+                    elem_info = element.element_info
+                    
+                    structure = {
+                        'ControlType': elem_info.control_type,
+                        'Name': elem_info.name or '',
+                        'AutomationId': element.automation_id() if hasattr(element, 'automation_id') else '',
+                        'ClassName': elem_info.class_name or '',
+                        'IsEnabled': elem_info.enabled,
+                        'IsVisible': elem_info.visible,
+                        'Rectangle': str(elem_info.rectangle),
+                        'Children': {}
+                    }
+                    
+                    # Add value for editable controls
+                    if elem_info.control_type in ['Edit', 'ComboBox']:
+                        try:
+                            structure['Value'] = element.get_value() if hasattr(element, 'get_value') else ''
+                            structure['IsKeyboardFocusable'] = getattr(elem_info, 'keyboard_focusable', False)
+                        except:
+                            structure['Value'] = ''
+                    
+                    # Get texts
+                    try:
+                        texts = element.texts()
+                        if texts:
+                            structure['Texts'] = texts
+                    except:
+                        pass
+                        
+                    # Get children
+                    try:
+                        children = element.children()
+                        for i, child in enumerate(children):
+                            child_name = ''
+                            child_type = ''
+                            child_id = ''
+                            
+                            try:
+                                child_info = child.element_info
+                                child_name = child_info.name or ''
+                                child_type = child_info.control_type
+                                child_id = child.automation_id() if hasattr(child, 'automation_id') else ''
+                            except:
+                                pass
+                            
+                            # Create descriptive key
+                            if child_id:
+                                child_key = f"{child_type}_{child_id}_{i}"
+                            elif child_name:
+                                safe_name = ''.join(c if c.isalnum() else '_' for c in child_name[:20])
+                                child_key = f"{child_type}_{safe_name}_{i}"
+                            else:
+                                child_key = f"{child_type}_{i}"
+                                
+                            structure['Children'][child_key] = extract_structure(child, depth + 1, max_depth)
+                            
+                    except Exception as e:
+                        logger.debug(f"Error getting children: {e}")
+                        
+                    return structure
+                    
+                except Exception as e:
+                    return {"error": str(e)}
+            
+            # Extract full structure
+            return extract_structure(window)
+            
+        except Exception as e:
+            logger.error(f"Error getting UIA structure: {e}")
+            return {"error": str(e)}
     
     async def run(self):
         """Main client loop"""

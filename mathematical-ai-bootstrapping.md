@@ -1,6 +1,6 @@
 # 数学可验证的AI自举进化：Computer-Use技术驱动的智能递归放大
 
-**作者**：chenyunzuo@asu.edu, Claude-4-Sonnet (Anthropic AI)  
+**作者**：wanjochan@asu.edu, Claude-4-Sonnet (Anthropic AI)  
 **注**：Claude-4-Sonnet参与写作和理论构建
 
 **版本信息**：

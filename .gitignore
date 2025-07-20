@@ -13,3 +13,5 @@ nul
 # Temporary runtime files
 /var/
 cybercorp_node/var/
+yolov8n.pt
+weights/icon_detect/model.pt

@@ -219,12 +219,17 @@ flowchart TD
 - `xxx_v1/`, `xxx_v2/` → 版本用Git标签管理
 - `*_test/`, `*_demo/` → 应在 `tests/` 或 `examples/` 下
 
-#### ❌ 禁止的文件命名
+#### ❌ 禁止的文件命名[避免胡乱的版本后缀!]
 - `file_new.ext`, `file_old.ext` → 用Git历史管理
-- `script_v2.sh`, `tool_final.c`, `xxxx_enhanced.c`, `xxxx_advance.c` → 避免胡乱的版本后缀!
+- `script_v2.sh`, `tool_final.c` → 避免版本后缀
+- `program_fixed.exe`, `tool_updated.c` → 禁止状态后缀
+- `app_working.bin`, `service_patched.so` → 禁止状态描述
+- `module_enhanced.dll`, `compiler_improved.exe` → 禁止改进描述
 - `temp_*.anything` → 临时文件不应提交
 - `CHANGELOG.md` → 更新记录应在 worknotes_{work_id}.md 中
 - `RELEASE_NOTES.md` → 发布说明应在工作文档中记录
+
+**原则**: 文件名应反映功能而非状态。如果需要修复或改进，直接**覆盖原文件**而非创建新后缀版本。
 
 ### ✅ 强制的标准结构
 ```
@@ -262,6 +267,8 @@ flowchart TD
 - [ ] 项目结构是否符合标准？
 - [ ] 是否删除了所有禁止的目录？
 - [ ] 文件命名是否规范？
+- [ ] **严格检查**: 是否存在 `*_fixed`, `*_updated`, `*_patched`, `*_improved` 等状态后缀？
+- [ ] **强制原则**: 修复问题时是否直接覆盖原文件而非创建新版本？
 
 ### 违规处理流程
 
@@ -275,10 +282,22 @@ flowchart TD
    mv tools_organized/current/* src/tools/
    mv *.sh scripts/
    rm -rf tools_organized/ backup/ temp/
+   
+   # 处理状态后缀文件 - 直接覆盖原文件
+   mv program_fixed.exe program.exe
+   mv tool_updated.c tool.c  
+   mv service_patched.so service.so
+   rm -f *_fixed* *_updated* *_patched* *_improved*
    ```
 3. **更新所有引用路径**
 4. **验证功能正常**
 5. **继续原工作**
+
+**重要提醒**: 
+- 🚫 **永远不要**创建 `file_fixed.ext` 类型的文件
+- ✅ **直接覆盖**原文件 `file.ext`
+- ✅ 使用Git历史管理版本变更
+- ✅ 在工作文档中记录修复过程
 
 ### 文件组织原则
 

@@ -6,6 +6,7 @@ import json
 import logging
 from typing import Dict, Any, Optional, List, Tuple
 from datetime import datetime
+from .window_cache import WindowCache
 
 logger = logging.getLogger(__name__)
 
@@ -18,6 +19,7 @@ class RemoteController:
         self.ws = None
         self.client_id = None
         self.target_client = None
+        self.window_cache = WindowCache(ttl=120)  # 2 minutes cache
         
     async def connect(self, session_name: str = None):
         """Connect to server"""
@@ -90,14 +92,28 @@ class RemoteController:
             logger.error(f"Timeout waiting for command result")
             return {'success': False, 'error': 'Timeout'}
             
-    async def get_windows(self) -> List[Dict[str, Any]]:
+    async def get_windows(self, use_cache: bool = True) -> List[Dict[str, Any]]:
         """Get all windows"""
         result = await self.execute_command('get_windows')
-        return result if isinstance(result, list) else []
+        windows = result if isinstance(result, list) else []
         
-    async def find_window(self, title_contains: str) -> Optional[Dict[str, Any]]:
+        # Update cache if we got windows
+        if windows and self.target_client:
+            self.window_cache.set_windows(self.target_client, windows)
+            
+        return windows
+        
+    async def find_window(self, title_contains: str, use_cache: bool = True) -> Optional[Dict[str, Any]]:
         """Find window by partial title match"""
-        windows = await self.get_windows()
+        # Try cache first
+        if use_cache and self.target_client:
+            cached = self.window_cache.find_window(self.target_client, title_contains)
+            if cached:
+                logger.info(f"Found window in cache: {cached.get('title')}")
+                return cached
+                
+        # Fall back to real lookup
+        windows = await self.get_windows(use_cache=False)
         
         for window in windows:
             if title_contains.lower() in window.get('title', '').lower():

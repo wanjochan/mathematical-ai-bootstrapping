@@ -1,117 +1,112 @@
-"""Test script to control Cursor IDE"""
+"""Test controlling Cursor IDE"""
 
 import asyncio
-import json
-import websockets
+import sys
+from utils.remote_control import RemoteController, WindowController, BatchExecutor
 import logging
 
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+# Set UTF-8 encoding
+if sys.platform == 'win32':
+    import io
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 
-async def control_cursor():
-    """Control Cursor IDE on wjchk"""
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+
+async def control_cursor_workflow():
+    """Control Cursor to open and modify workflow.md"""
+    controller = RemoteController()
+    
     try:
-        # Connect to server
-        uri = "ws://localhost:9998"
-        async with websockets.connect(uri) as ws:
-            logger.info("Connected to server")
-            
-            # Register as test client
-            await ws.send(json.dumps({
-                'type': 'register',
-                'client_type': 'cursor_control'
-            }))
-            
-            # Wait for registration response
-            response = await ws.recv()
-            logger.info(f"Registration response: {response}")
-            
-            # List clients
-            await ws.send(json.dumps({'type': 'list_clients'}))
-            clients_response = await ws.recv()
-            clients = json.loads(clients_response)
-            logger.info(f"Clients: {json.dumps(clients, indent=2)}")
-            
-            # Find wjchk client
-            wjchk_client = None
-            for client in clients.get('clients', []):
-                if client.get('username') == 'wjchk':
-                    wjchk_client = client
-                    break
-                    
-            if not wjchk_client:
-                logger.error("Client 'wjchk' not found")
-                return
-                
-            client_id = wjchk_client['id']
-            logger.info(f"Found wjchk client: {client_id}")
-            
-            # Get windows
-            await ws.send(json.dumps({
-                'type': 'forward_command',
-                'target_client_id': client_id,
-                'command': 'get_windows'
-            }))
-            
-            windows_response = await ws.recv()
-            windows_data = json.loads(windows_response)
-            
-            if windows_data.get('success'):
-                windows = windows_data.get('result', [])
-                
-                # Find Cursor window
-                cursor_window = None
-                for window in windows:
-                    title = window.get('title', '').lower()
-                    if 'cursor' in title:
-                        cursor_window = window
-                        logger.info(f"Found Cursor window: {window}")
-                        break
-                        
-                if not cursor_window:
-                    logger.error("Cursor window not found")
-                    # List all windows for debugging
-                    logger.info("Available windows:")
-                    for w in windows[:10]:  # Show first 10
-                        logger.info(f"  - {w.get('title')} (class: {w.get('class')})")
-                    return
-                    
-                # Now try to interact with Cursor
-                # First activate the window
-                await ws.send(json.dumps({
-                    'type': 'forward_command',
-                    'target_client_id': client_id,
-                    'command': 'activate_window',
-                    'params': {'hwnd': cursor_window['hwnd']}
-                }))
-                
-                activate_response = await ws.recv()
-                logger.info(f"Activate response: {activate_response}")
-                
-                # Wait a bit for window to activate
-                await asyncio.sleep(1)
-                
-                # Now send the text
-                text_to_send = """阅读workflow.md了解工作流；
-启动新job(work_id=cybercorp_dashboard)，在现有的cybercorp_web/里面加入dashboard功能，用来观察所有的受控端信息
-做好之后打开网站测试看看效果"""
-                
-                # Send keys to input the text
-                await ws.send(json.dumps({
-                    'type': 'forward_command',
-                    'target_client_id': client_id,
-                    'command': 'send_keys',
-                    'params': {'keys': text_to_send}
-                }))
-                
-                keys_response = await ws.recv()
-                logger.info(f"Send keys response: {keys_response}")
-                
-            else:
-                logger.error(f"Failed to get windows: {windows_data}")
-                
-    except Exception as e:
-        logger.error(f"Error: {e}")
+        # Connect
+        await controller.connect("cursor_test")
         
+        # Find wjchk client
+        await controller.find_client("wjchk")
+        
+        # Find Cursor window
+        window = await controller.find_window("mathematical-ai-bootstrapping - Cursor")
+        if not window:
+            print("Cursor window not found!")
+            return
+            
+        cursor = WindowController(controller, window['hwnd'], window['title'])
+        print(f"Found Cursor: {window['title']} (hwnd: {window['hwnd']})")
+        
+        # Take initial screenshot
+        print("\nTaking initial screenshot...")
+        screenshot_path = await cursor.screenshot("cursor_before.png")
+        if screenshot_path:
+            print(f"Screenshot saved: {screenshot_path}")
+            
+        # Activate and send command
+        print("\nSending command to Cursor chat...")
+        
+        # Based on the screenshot, the chat input is at approximately x=1495, y=112
+        success = await cursor.send_command(
+            "打开docs/workflow.md文件，将其中过于谄媚的措辞修改得更加中立专业",
+            input_coords=(1495, 112)
+        )
+        
+        if success:
+            print("Command sent successfully!")
+            
+            # Wait a bit for Cursor to process
+            await asyncio.sleep(5)
+            
+            # Take another screenshot
+            print("\nTaking verification screenshot...")
+            screenshot_path = await cursor.screenshot("cursor_after.png")
+            if screenshot_path:
+                print(f"Screenshot saved: {screenshot_path}")
+        else:
+            print("Failed to send command")
+            
+    finally:
+        await controller.close()
+
+
+async def test_batch_control():
+    """Test batch command execution"""
+    controller = RemoteController()
+    
+    try:
+        await controller.connect("batch_test")
+        await controller.find_client("wjchk")
+        
+        # Create batch executor
+        batch = BatchExecutor(controller)
+        
+        # Add commands
+        batch.add_command('activate_window', {'hwnd': 5898916})
+        batch.add_wait(1)
+        batch.add_click(1495, 112)
+        batch.add_wait(0.5)
+        batch.add_keys('^a{DELETE}')
+        batch.add_wait(0.3)
+        batch.add_keys('测试批处理命令')
+        batch.add_wait(0.5)
+        batch.add_command('screenshot', {'hwnd': 5898916})
+        
+        # Execute all
+        print("Executing batch commands...")
+        results = await batch.execute()
+        
+        for i, result in enumerate(results):
+            print(f"Command {i+1}: {result}")
+            
+    finally:
+        await controller.close()
+
+
 if __name__ == "__main__":
-    asyncio.run(control_cursor())
+    import argparse
+    
+    parser = argparse.ArgumentParser(description='Test Cursor control')
+    parser.add_argument('--batch', action='store_true', help='Test batch execution')
+    
+    args = parser.parse_args()
+    
+    if args.batch:
+        asyncio.run(test_batch_control())
+    else:
+        asyncio.run(control_cursor_workflow())

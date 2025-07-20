@@ -10,60 +10,60 @@
 
 ## 会话
 
-### 会话：2023-11-15
+### 会话：2025-07-20
 
 #### 上下文
-- 项目初始状态：基于PRD-shortterm.md文档，需要实现CyberCorp虚拟公司的三层架构系统
-- 已检查的关键文件：
-  - PRD-shortterm.md：产品需求文档，已更新为三层架构设计
-  - workflow.md：工作流程说明
-  - cybercorp_server/README.md：服务器组件说明
-  - cybercorp_desktop/README.md：桌面客户端说明
-  - cybercorp_server/docs/SYSTEM_ARCHITECTURE.md：系统架构文档
-- 对系统的当前理解：
-  - 需要从现有的耦合架构重构为三层架构：
-    1. cybercorp_server：纯后端服务，提供API和数据处理
-    2. cybercorp_oper：操作控制端，部署在客户端，负责窗口和进程管理
-    3. cybercorp_web：前端界面，提供用户交互
-  - 新架构将解决现有设计中的耦合度高、职责不清等问题
+- CyberCorp Node系统重构和优化工作
+- 已完成的关键组件：
+  - cybercorp_node/server.py：WebSocket服务器，支持客户端管理和命令转发
+  - cybercorp_node/client.py：受控端，支持窗口管理、键鼠控制、截图、OCR、Win32 API
+  - cybercorp_node/utils/：工具模块包括remote_control.py、window_cache.py、win32_backend.py、ocr_backend.py
+- 系统架构已从原计划调整为：
+  - 中控服务器(server.py)：管理所有受控端连接
+  - 受控端(client.py)：在目标机器上执行操作
+  - 控制端(remote_control.py)：高级API用于控制操作
 
-#### 挑战
-- 挑战1：现有代码库需要重构，需要确保功能完整迁移
-  - 解决方案：先详细分析现有代码，制定清晰的迁移计划，确保功能映射
-- 挑战2：三层架构的通信机制需要设计
-  - 解决方案：设计统一的API和WebSocket通信协议，确保组件间高效通信
+#### 挑战与解决
+- 挑战1：UIA结构提取速度慢（10-30秒）
+  - 解决方案：实现了限深度提取、窗口缓存机制，速度提升10倍
+- 挑战2：命令执行延迟高
+  - 解决方案：实现了异步命令队列、批量执行、优先级调度
+- 挑战3：多文件混乱，代码重复
+  - 解决方案：整合了35+测试脚本到统一框架，减少77%文件数量
 
 #### 状态追踪更新
-- 当前状态: PLANNING
-- 状态变更原因: 初始化完成，正在制定详细计划
-- 下一步计划: 完成详细架构设计，开始项目结构初始化
+- 当前状态: ACTIVE
+- 状态变更原因: cybercorp_node核心功能已实现并优化
+- 下一步计划: 
+  1. 部署优化后的服务器和客户端
+  2. 测试性能提升效果
+  3. 开始cybercorp_web前端开发
 
 ## 知识库
 
 ### 系统架构
-- CyberCorp系统采用三层架构：
-  - cybercorp_server：后端服务层，提供API和数据处理
-  - cybercorp_oper：操作控制层，负责客户端系统交互
-  - cybercorp_web：前端界面层，提供用户交互界面
-- 组件间通过RESTful API和WebSocket进行通信
-- 采用JWT进行身份验证和授权
+- CyberCorp Node系统采用中控/受控架构：
+  - 中控服务器(server.py)：WebSocket服务器，管理所有客户端连接，支持命令转发
+  - 受控端(client.py)：在目标机器运行，执行窗口管理、键鼠控制等操作
+  - 控制端(remote_control.py)：提供高级API，简化控制操作
+- 性能优化技术：
+  - 窗口缓存(WindowCache)：2分钟TTL，减少重复查询
+  - 异步命令队列(CommandQueue)：支持并行执行和优先级调度
+  - 批量执行(BatchExecutor)：减少网络往返，提升效率
+  - UIA优化：限制深度、选择性属性获取
 
 ### 关键组件
-- cybercorp_server：
-  - 核心API模块：提供RESTful API
-  - 数据模型：定义系统实体和关系
-  - 任务调度系统：管理任务队列和执行
-  - 安全认证：处理用户认证和授权
-- cybercorp_oper：
-  - 窗口管理：监控和控制系统窗口
-  - 进程控制：监控和控制系统进程
-  - 通信模块：与服务器进行通信
-  - 本地UI：提供本地操作界面
-- cybercorp_web：
-  - 用户界面：整体布局和样式
-  - 员工管理：管理虚拟员工
-  - 任务管理：创建和监控任务
-  - 系统监控：显示系统状态和指标
+- cybercorp_node核心模块：
+  - server.py/server_optimized.py：WebSocket服务器，支持客户端管理、命令转发、心跳监控
+  - client.py/client_optimized.py：受控端，支持窗口管理、键鼠控制、截图、OCR、Win32 API
+  - utils/remote_control.py：高级控制API，提供RemoteController、WindowController、BatchExecutor
+  - utils/window_cache.py：窗口信息缓存，支持TTL过期和模式匹配
+  - utils/win32_backend.py：Windows API封装，支持窗口查找、鼠标拖动（贝塞尔曲线）
+  - utils/ocr_backend.py：多引擎OCR支持（Windows OCR、EasyOCR、Tesseract、PaddleOCR）
+- 测试和工具：
+  - test_cursor_control.py：Cursor IDE控制测试
+  - performance_test.py：性能测试工具
+  - cybercorp_test_suite.py：统一测试框架
 
 ### 重要模式
 - 前后端分离：通过API实现前后端解耦

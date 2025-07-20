@@ -536,6 +536,80 @@ class CyberCorpClient:
                 except Exception as e:
                     logger.error(f"Send keys error: {e}")
                     result = {'success': False, 'error': str(e)}
+            
+            elif command == 'screenshot':
+                # Take screenshot of entire screen or specific window
+                import os
+                from datetime import datetime
+                
+                window_hwnd = params.get('hwnd')
+                save_path = params.get('save_path')
+                
+                try:
+                    if not save_path:
+                        # Generate default path
+                        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+                        save_path = os.path.join(os.path.dirname(__file__), f'screenshot_{timestamp}.png')
+                    
+                    if window_hwnd:
+                        # Screenshot specific window
+                        import win32gui
+                        import win32ui
+                        import win32con
+                        from PIL import Image
+                        
+                        # Get window rect
+                        left, top, right, bottom = win32gui.GetWindowRect(window_hwnd)
+                        width = right - left
+                        height = bottom - top
+                        
+                        # Get window DC
+                        hwndDC = win32gui.GetWindowDC(window_hwnd)
+                        mfcDC = win32ui.CreateDCFromHandle(hwndDC)
+                        saveDC = mfcDC.CreateCompatibleDC()
+                        
+                        # Create bitmap
+                        saveBitMap = win32ui.CreateBitmap()
+                        saveBitMap.CreateCompatibleBitmap(mfcDC, width, height)
+                        saveDC.SelectObject(saveBitMap)
+                        
+                        # Copy window content
+                        saveDC.BitBlt((0, 0), (width, height), mfcDC, (0, 0), win32con.SRCCOPY)
+                        
+                        # Save bitmap
+                        bmpinfo = saveBitMap.GetInfo()
+                        bmpstr = saveBitMap.GetBitmapBits(True)
+                        
+                        # Convert to PIL Image
+                        img = Image.frombuffer(
+                            'RGB',
+                            (bmpinfo['bmWidth'], bmpinfo['bmHeight']),
+                            bmpstr, 'raw', 'BGRX', 0, 1
+                        )
+                        
+                        # Save
+                        img.save(save_path)
+                        
+                        # Cleanup
+                        win32gui.DeleteObject(saveBitMap.GetHandle())
+                        saveDC.DeleteDC()
+                        mfcDC.DeleteDC()
+                        win32gui.ReleaseDC(window_hwnd, hwndDC)
+                    else:
+                        # Full screen screenshot
+                        screenshot = pyautogui.screenshot()
+                        screenshot.save(save_path)
+                    
+                    result = {
+                        'success': True,
+                        'path': os.path.abspath(save_path),
+                        'size': os.path.getsize(save_path)
+                    }
+                    logger.info(f"Screenshot saved to: {save_path}")
+                    
+                except Exception as e:
+                    logger.error(f"Screenshot error: {e}")
+                    result = {'success': False, 'error': str(e)}
                     
             elif command == 'get_window_uia_structure':
                 hwnd = params.get('hwnd')

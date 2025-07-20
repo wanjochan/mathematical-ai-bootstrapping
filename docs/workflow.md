@@ -117,8 +117,8 @@ flowchart TD
 
    - **更新进度**：
      - 更新 docs/working/workplan_{work_id}.md 的进度（仅在验证成功后）。注意：如当前环境支持任务管理也记得同步到环境的任务列表；
-     - 更新 docs/working/worknotes_{work_id}.md 的上下文和经验
-     - 记录遇到的问题和解决方案
+     - 更新 docs/working/worknotes_{work_id}.md 的上下文和经验,记录遇到的问题和解决方案;
+     - **重要**：不要创建新的文档文件（如CHANGELOG.md），所有更新都应该记录在对应的工作文档中
    - **提交进度**：
      - 将更新的文档和代码变更提交到版本控制系统
      - 推送到远程仓库以保持同步
@@ -200,6 +200,8 @@ flowchart TD
 - `file_new.ext`, `file_old.ext` → 用Git历史管理
 - `script_v2.sh`, `tool_final.c` → 避免版本后缀
 - `temp_*.anything` → 临时文件不应提交
+- `CHANGELOG.md` → 更新记录应在 worknotes_{work_id}.md 中
+- `RELEASE_NOTES.md` → 发布说明应在工作文档中记录
 
 ### ✅ 强制的标准结构
 ```
@@ -212,6 +214,10 @@ flowchart TD
 ├── scripts/               # 构建脚本 (唯一脚本位置)
 ├── tests/                 # 测试文件
 ├── docs/                  # 文档
+│   ├── working/           # 工作文档（所有进度更新都在这里）
+│   │   ├── workplan_*.md  # 工作计划文档
+│   │   └── worknotes_*.md # 工作笔记文档
+│   └── README.md          # 项目说明（功能导向）
 └── examples/              # 示例代码
 ```
 

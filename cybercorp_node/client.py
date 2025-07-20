@@ -590,6 +590,9 @@ class CyberCorpClient:
             if command == 'get_windows':
                 return await loop.run_in_executor(None, self._get_windows)
                 
+            elif command == 'find_cursor_windows':
+                return await loop.run_in_executor(None, self._find_cursor_windows)
+                
             elif command == 'get_window_content':
                 return await loop.run_in_executor(None, self.vscode_controller.get_window_content)
                 
@@ -724,6 +727,70 @@ class CyberCorpClient:
             )
         except Exception as e:
             return format_error(e, error_code='ENUM_WINDOWS_FAILED')
+    
+    def _find_cursor_windows(self):
+        """Find Cursor IDE windows specifically"""
+        try:
+            import psutil
+            import win32process
+            
+            cursor_windows = []
+            all_windows = []
+            
+            def enum_handler(hwnd, ctx):
+                if win32gui.IsWindowVisible(hwnd):
+                    title = win32gui.GetWindowText(hwnd)
+                    if title:
+                        class_name = win32gui.GetClassName(hwnd)
+                        
+                        # Get process info
+                        try:
+                            _, pid = win32process.GetWindowThreadProcessId(hwnd)
+                            process = psutil.Process(pid)
+                            process_name = process.name()
+                        except:
+                            process_name = "Unknown"
+                            pid = 0
+                        
+                        window_info = {
+                            'hwnd': hwnd,
+                            'title': title,
+                            'class': class_name,
+                            'process_name': process_name,
+                            'pid': pid
+                        }
+                        
+                        all_windows.append(window_info)
+                        
+                        # Check if this is a Cursor window
+                        # Cursor uses Chrome_WidgetWin_1 class and "Cursor.exe" process
+                        if (class_name == 'Chrome_WidgetWin_1' and 
+                            'cursor' in process_name.lower()):
+                            cursor_windows.append(window_info)
+                            logger.info(f"Found Cursor window: {title} (process: {process_name})")
+                        
+                return True
+                
+            win32gui.EnumWindows(enum_handler, None)
+            
+            # If no Cursor windows found, show Chrome_WidgetWin_1 windows for debugging
+            if not cursor_windows:
+                chrome_windows = [w for w in all_windows if w['class'] == 'Chrome_WidgetWin_1']
+                logger.info(f"No Cursor windows found. Chrome_WidgetWin_1 windows: {len(chrome_windows)}")
+                for w in chrome_windows[:5]:
+                    logger.info(f"  - {w['title']} (process: {w['process_name']})")
+            
+            return format_success(
+                data={
+                    'cursor_windows': cursor_windows, 
+                    'count': len(cursor_windows),
+                    'all_chrome_windows': [w for w in all_windows if w['class'] == 'Chrome_WidgetWin_1']
+                },
+                message=f"Found {len(cursor_windows)} Cursor windows"
+            )
+        except Exception as e:
+            logger.error(f"Error finding Cursor windows: {e}")
+            return format_error(str(e))
     
     def _take_screenshot(self):
         """Take screenshot and return as base64"""
@@ -1039,7 +1106,8 @@ class CyberCorpClient:
     def _handle_screenshot(self, params: dict):
         """Handle screenshot operation"""
         import os
-        from datetime import datetime
+        # Use the module-level datetime import instead of local import
+        global datetime
         
         window_hwnd = params.get('hwnd')
         save_path = params.get('save_path')

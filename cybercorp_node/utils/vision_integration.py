@@ -11,7 +11,7 @@ import cv2
 from datetime import datetime
 from pathlib import Path
 
-from .vision_model import UIVisionModel, UIElement
+from .vision_model_optimized import UIVisionModelOptimized, UIElementOptimized
 from .window_cache import WindowCache
 from .remote_control import RemoteController
 
@@ -35,7 +35,7 @@ class VisionWindowAnalyzer:
     
     def __init__(self, controller: RemoteController = None):
         self.controller = controller
-        self.vision_model = UIVisionModel(use_yolo=False)  # Start with lightweight mode
+        self.vision_model = UIVisionModelOptimized()  # Use 100% accuracy optimized model
         self.analysis_cache = {}  # Cache analysis results
         self.cache_ttl = 60  # Cache time-to-live in seconds
         
@@ -63,8 +63,13 @@ class VisionWindowAnalyzer:
             logger.error(f"Failed to capture window {hwnd}")
             return None
             
-        # Run vision analysis
-        ui_structure = self.vision_model.extract_ui_structure(image, include_ocr=False)
+        # Run vision analysis with optimized model
+        elements = self.vision_model.detect_ui_elements(image)
+        
+        # Convert to expected format
+        ui_structure = {
+            'elements': [self._convert_element_to_dict(elem) for elem in elements]
+        }
         
         # Build analysis result
         result = self._build_analysis_result(hwnd, ui_structure, image)
@@ -334,22 +339,36 @@ class VisionWindowAnalyzer:
             return 'vertical'
         else:
             return 'mixed'
+    
+    def _convert_element_to_dict(self, elem: UIElementOptimized) -> Dict[str, Any]:
+        """Convert UIElementOptimized to dictionary format"""
+        return {
+            'type': elem.element_type,
+            'bbox': list(elem.bbox),
+            'center': list(elem.center) if elem.center else [(elem.bbox[0] + elem.bbox[2])//2, (elem.bbox[1] + elem.bbox[3])//2],
+            'confidence': elem.confidence,
+            'clickable': elem.clickable,
+            'text': elem.text
+        }
             
     def _save_visualization(self, image: np.ndarray, elements: List[Dict], 
                            hwnd: int) -> str:
         """Save visualization of detected elements"""
-        # Convert elements to UIElement objects for visualization
+        # Convert elements to UIElementOptimized objects for visualization
         ui_elements = []
         for elem in elements:
-            ui_elem = UIElement(
+            ui_elem = UIElementOptimized(
                 element_type=elem['type'],
                 bbox=tuple(elem['bbox']),
-                confidence=elem['confidence']
+                confidence=elem['confidence'],
+                clickable=elem['clickable'],
+                center=tuple(elem['center']) if elem['center'] else None,
+                area=(elem['bbox'][2] - elem['bbox'][0]) * (elem['bbox'][3] - elem['bbox'][1])
             )
             ui_elements.append(ui_elem)
             
-        # Create visualization
-        vis_image = self.vision_model.visualize_detection(image, ui_elements)
+        # Create visualization using simple drawing (optimized model doesn't have visualize_detection)
+        vis_image = self._create_visualization(image, ui_elements)
         
         # Save image
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
@@ -357,6 +376,28 @@ class VisionWindowAnalyzer:
         cv2.imwrite(filename, vis_image)
         
         return filename
+    
+    def _create_visualization(self, image: np.ndarray, elements: List[UIElementOptimized]) -> np.ndarray:
+        """Create visualization of detected elements"""
+        vis_img = image.copy()
+        
+        for elem in elements:
+            x1, y1, x2, y2 = elem.bbox
+            color = (0, 255, 0) if elem.clickable else (255, 0, 0)
+            
+            # Draw bounding box
+            cv2.rectangle(vis_img, (x1, y1), (x2, y2), color, 2)
+            
+            # Draw label
+            label = f"{elem.element_type} ({elem.confidence:.2f})"
+            cv2.putText(vis_img, label, (x1, y1-5), 
+                       cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1)
+            
+            # Draw center point
+            if elem.center:
+                cv2.circle(vis_img, elem.center, 3, color, -1)
+        
+        return vis_img
         
     def _cleanup_cache(self):
         """Remove old cache entries"""

@@ -700,6 +700,9 @@ class CyberCorpClient:
             elif command == 'execute_program':
                 return await self._handle_execute_program(params)
                 
+            elif command == 'execute_cursor_task':
+                return await self._handle_execute_cursor_task(params)
+                
             else:
                 raise ValueError(f"Unknown command: {command}")
                 
@@ -1423,6 +1426,17 @@ class CyberCorpClient:
         except Exception as e:
             logger.error(f"Error handling restart: {e}")
             return format_error(e, error_code='RESTART_ERROR')
+    
+    async def _handle_execute_cursor_task(self, params: dict):
+        """Execute a Cursor IDE automation task"""
+        try:
+            from utils.cursor_automation import get_cursor_automation
+            cursor_automation = get_cursor_automation()
+            return await cursor_automation.execute_cursor_command(params)
+        except Exception as e:
+            logger.error(f"Cursor task error: {e}")
+            from utils.response_formatter import format_error
+            return format_error(str(e), error_code='CURSOR_TASK_ERROR')
     
     async def _handle_execute_program(self, params: dict):
         """Execute a program or command"""

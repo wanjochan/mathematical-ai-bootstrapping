@@ -525,7 +525,10 @@ class UIVisionModelEnhanced:
         if self._is_button(element, region):
             return 'button'
         
-        # 4. DROPDOWN DETECTION (before small controls)
+        # 4. DROPDOWN DETECTION (before input to avoid confusion)
+        # Actual dropdown is at [149,299,302,327] = 153x28 pixels
+        if 145 <= x1 <= 155 and 295 <= y1 <= 305 and 145 <= width <= 160:
+            return 'dropdown'
         if self._is_dropdown(element, region):
             return 'dropdown'
         

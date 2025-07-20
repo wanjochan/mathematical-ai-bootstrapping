@@ -21,6 +21,6 @@ Vision Model Detected:
 - Total elements: 17
 - Clickable elements: 10
 - Element types: {'text': 7, 'radio': 4, 'checkbox': 1, 'button': 2, 'input': 3}
-- Processing time: 0.050s
+- Processing time: 0.059s
 
 Please analyze the test image and compare with the vision model results to evaluate accuracy.

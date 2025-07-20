@@ -19,7 +19,7 @@ flowchart TD
     UrgentExecute --> PostActionDoc["事后补充文档"]
     PostActionDoc --> End
 
-    CheckWorkId --> |已知work_id| ReadDocs["强制重新阅读文档<br/>workflow.md<br/>workplan_{work_id}.md<br/>worknotes_{work_id}.md"]
+    CheckWorkId --> |已知work_id| ReadDocs["强制重新阅读文档<br/>workflow.md<br/>docs/working/workplan_{work_id}.md<br/>docs/working/worknotes_{work_id}.md"]
     CheckWorkId --> |新工作流| CreateWorkId["创建新work_id"]
     CreateWorkId --> ReadTemplates["强制阅读模板文档<br/>workplan_template.md<br/>worknotes_template.md<br/>workflow.md"]
     ReadTemplates --> InitDocs["初始化工作流文档"]
@@ -91,33 +91,33 @@ flowchart TD
      - 阅读 workflow.md（工作流程说明）
      - 确保新创建的文档遵循统一的格式和标准
    - **初始化工作流文档**：
-    - 基于模板创建 workplan_{work_id}.md
-    - 基于模板创建 worknotes_{work_id}.md
+    - 基于模板创建 docs/working/workplan_{work_id}.md
+    - 基于模板创建 docs/working/worknotes_{work_id}.md
     - 添加新工作流，状态设为 `ACTIVE`
    - **阅读文档**：
-     - 阅读 workflow.md（工作流程说明）
-     - 阅读 workplan_{work_id}.md（任务非线性分解、动态规划、细节描述）
-     - 阅读 worknotes_{work_id}.md（上下文和经验）
+     - 阅读 docs/workflow.md（工作流程说明）
+     - 阅读 docs/working/workplan_{work_id}.md（任务非线性分解、动态规划、细节描述）
+     - 阅读 docs/working/worknotes_{work_id}.md（上下文和经验）
    - **检查用户输入**：
      - 如有用户新输入，评估输入内容
      - 如无新输入，检查工作计划完成状态
      - 如用户请求暂停，保存当前状态并暂停工作流
    - **有用户输入时**：
-     - 评估是否需要更新 workplan_{work_id}.md 和 worknotes_{work_id}.md
+     - 评估是否需要更新 docs/working/workplan_{work_id}.md 和 docs/working/worknotes_{work_id}.md
      - 如需要则更新文档
      - 执行当前计划
    - **无用户输入时**：
      - 如工作计划已完成，更新文档并结束会话
      - 如工作计划未完成，直接执行当前计划
    - **执行计划**：
-     - 根据 workplan_{work_id}.md 执行下一步
+     - 根据 docs/working/workplan_{work_id}.md 执行下一步
      - 检查是否有标记为 `[PARALLEL]` 的任务组（可选）
      - **重要**：脚本或代码创建后必须实际执行并验证结果
      - **禁止**：不允许仅创建脚本/代码就标记任务为完成
 
    - **更新进度**：
-     - 更新 workplan_{work_id}.md 的进度（仅在验证成功后）
-     - 更新 worknotes_{work_id}.md 的上下文和经验
+     - 更新 docs/working/workplan_{work_id}.md 的进度（仅在验证成功后）。注意：如当前环境支持任务管理也记得同步到环境的任务列表；
+     - 更新 docs/working/worknotes_{work_id}.md 的上下文和经验
      - 记录遇到的问题和解决方案
    - **提交进度**：
      - 将更新的文档和代码变更提交到版本控制系统
@@ -156,7 +156,7 @@ flowchart TD
 
 ## 工作流状态追踪
 
-每个工作流的状态将在 `workplan_{work_id}.md` 中进行集中追踪：
+每个工作流的状态将在 `docs/working/workplan_{work_id}.md` 中进行集中追踪：
 
 ### 状态类型
 - `ACTIVE` - 活跃执行中
@@ -182,12 +182,107 @@ flowchart TD
 - 任务状态变更时
 - 会话结束时
 
-## 并行任务处理（可选）
+
+## 📁 项目规范 (必须遵守)
+
+### 🚫 严格禁止的命名方式
+以下命名方式**绝对禁止**，违反者必须立即重构：
+
+#### ❌ 禁止的目录命名
+- `tools_organized/` → 含义模糊
+- `current/`, `new/`, `old/` → 版本控制应用Git分支
+- `experimental/`, `legacy/` → 应删除或用Git管理
+- `temp/`, `tmp/`, `backup/` → 不应在项目根目录
+- `xxx_v1/`, `xxx_v2/` → 版本用Git标签管理
+- `*_test/`, `*_demo/` → 应在 `tests/` 或 `examples/` 下
+
+#### ❌ 禁止的文件命名
+- `file_new.ext`, `file_old.ext` → 用Git历史管理
+- `script_v2.sh`, `tool_final.c` → 避免版本后缀
+- `temp_*.anything` → 临时文件不应提交
+
+### ✅ 强制的标准结构
+```
+/workspace/
+├── src/                    # 源代码 (唯一源码位置)
+│   ├── core/              # 核心编译器代码
+│   ├── tools/             # 工具源码
+│   └── cross/             # 交叉编译代码
+├── bin/                   # 可执行文件 (唯一二进制位置)
+├── scripts/               # 构建脚本 (唯一脚本位置)
+├── tests/                 # 测试文件
+├── docs/                  # 文档
+└── examples/              # 示例代码
+```
+
+### 规范执行检查点
+
+在工作流每个阶段必须检查：
+
+#### 开发阶段检查
+- [ ] 是否在 `src/` 中创建源码？
+- [ ] 是否避免了临时目录？
+- [ ] 命名是否符合功能导向原则？
+
+#### 构建阶段检查  
+- [ ] 可执行文件是否输出到 `bin/`？
+- [ ] 构建脚本是否在 `scripts/`？
+- [ ] 是否清理了临时文件？
+
+#### 提交阶段检查
+- [ ] 项目结构是否符合标准？
+- [ ] 是否删除了所有禁止的目录？
+- [ ] 文件命名是否规范？
+
+### 违规处理流程
+
+**发现违规命名时的必要步骤：**
+
+1. **立即停止当前工作**
+2. **重构到标准结构：**
+   ```bash
+   # 示例重构命令
+   mkdir -p src/tools bin scripts
+   mv tools_organized/current/* src/tools/
+   mv *.sh scripts/
+   rm -rf tools_organized/ backup/ temp/
+   ```
+3. **更新所有引用路径**
+4. **验证功能正常**
+5. **继续原工作**
+
+### 文件组织原则
+
+#### 源码组织 (`src/`)
+- **按功能分模块**：`core/`, `tools/`, `cross/`
+- **一个模块一个目录**：避免平铺所有文件
+- **接口文件明确**：每个模块有清晰的API
+
+#### 可执行文件 (`bin/`)
+- **只放最终产品**：经过测试的可执行文件
+- **命名简洁明确**：`c99bin`, `c99bin-cross`
+- **避免中间产物**：不放调试版本
+
+#### 脚本组织 (`scripts/`)
+- **按功能分类**：`build/`, `test/`, `deploy/`
+- **可执行权限**：所有脚本设置+x权限  
+- **文档化参数**：每个脚本有使用说明
+
+## 哲学思想，编程之道
+
+- **文件管理**：只在必要时创建新文件,优先复用现有组件
+- **规格驱动**：需求必须先形成规格文档,再据此规划任务
+- **结构优先**：项目结构必须清晰规范，这是代码质量的基础
+- **效率优化**：合理使用并行异步和空间换时间等策略提升效率
+- **开发体验**：优先采用热更新机制,避免频繁重启
+- **思维方式**：保持客观理性,培养批判性思维能力
+
+## 并行任务处理
 
 对于需要并行处理的复杂任务：
 
 ### 任务并行化
-- 在 `workplan_{work_id}.md` 中使用 `[PARALLEL]` 标记可并行执行的任务组
+- 在 `docs/working/workplan_{work_id}.md` 中使用 `[PARALLEL]` 标记可并行执行的任务组
 - 示例：
   ```
   - T1 [50%] 核心功能开发 [PARALLEL]
@@ -206,3 +301,37 @@ flowchart TD
 - **定期回顾**：分析工作流执行效率，识别改进点
 - **模板更新**：基于实际使用情况优化模板文档
 - **流程简化**：移除冗余步骤，优化关键路径
+### 📋 并行开发实施指南
+
+#### 第一步：模块化架构设计
+```
+1. 识别独立的功能模块
+2. 定义清晰的模块接口
+3. 确保模块间松耦合
+4. 建立统一的数据结构
+```
+
+#### 第二步：并行开发规划
+```
+每轮并行开发应包含：
+- 2-3个相关但独立的模块
+- 明确的集成点
+- 统一的测试策略
+- 风险缓解计划
+```
+
+#### 第三步：同步执行策略
+```
+1. 同时创建多个模块文件
+2. 采用统一的编码风格
+3. 实时交叉验证接口
+4. 持续集成测试
+```
+
+#### 第四步：质量保证体系
+```
+- 每个模块独立验证
+- 模块间接口测试
+- 整体集成验证
+- 性能基准测试
+```

@@ -124,17 +124,23 @@ class RemoteController:
     async def activate_window(self, hwnd: int) -> bool:
         """Activate window"""
         result = await self.execute_command('activate_window', {'hwnd': hwnd})
-        return result.get('success', False)
+        if isinstance(result, dict):
+            return result.get('success', False)
+        return False
         
     async def click(self, x: int, y: int) -> bool:
         """Send mouse click"""
         result = await self.execute_command('send_mouse_click', {'x': x, 'y': y})
-        return result.get('success', False)
+        if isinstance(result, dict):
+            return result.get('success', False)
+        return False
         
     async def send_keys(self, keys: str, delay: float = 0.01) -> bool:
         """Send keyboard input"""
         result = await self.execute_command('send_keys', {'keys': keys, 'delay': delay})
-        return result.get('success', False)
+        if isinstance(result, dict):
+            return result.get('success', False)
+        return False
         
     async def screenshot(self, hwnd: int = None, save_path: str = None) -> Optional[str]:
         """Take screenshot"""
@@ -146,11 +152,12 @@ class RemoteController:
             
         result = await self.execute_command('screenshot', params, timeout=15.0)
         
-        if result.get('success'):
-            return result.get('path')
-        else:
-            logger.error(f"Screenshot failed: {result.get('error')}")
-            return None
+        if isinstance(result, dict):
+            if result.get('success'):
+                return result.get('path')
+            else:
+                logger.error(f"Screenshot failed: {result.get('error')}")
+        return None
             
     async def get_uia_structure(self, hwnd: int) -> Optional[Dict[str, Any]]:
         """Get UIA structure of window"""

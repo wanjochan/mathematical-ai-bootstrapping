@@ -19,7 +19,7 @@ flowchart TD
     UrgentExecute --> PostActionDoc["事后补充文档"]
     PostActionDoc --> End
 
-    CheckWorkId --> |已知work_id| ReadDocs["强制重新阅读文档<br/>workflow.md<br/>docs/working/workplan_{work_id}.md<br/>docs/working/worknotes_{work_id}.md"]
+    CheckWorkId --> |已知work_id| ReadDocs["强制重新阅读文档<br/>workflow.md<br/>PRD.md<br/>docs/context.md<br/>docs/working/workplan_{work_id}.md<br/>docs/working/worknotes_{work_id}.md"]
     CheckWorkId --> |新工作流| CreateWorkId["创建新work_id"]
     CreateWorkId --> ReadTemplates["强制阅读模板文档<br/>workplan_template.md<br/>worknotes_template.md<br/>workflow.md"]
     ReadTemplates --> InitDocs["初始化工作流文档"]
@@ -32,14 +32,14 @@ flowchart TD
     CriticalThinking --> UpdateNeeded{"评估是否需要更新文档?"}
     UpdateNeeded -->|是| UpdateSpec["先更新规格文档<br/>- 更新需求规格<br/>- 更新技术规格<br/>- 更新接口定义"]
     UpdateSpec --> UpdateDocs["更新工作文档"]
-    UpdateDocs --> ExecutePlan["基于规格执行计划"]
+    UpdateDocs --> UpdateContext["更新context.md"]
+    UpdateContext --> ExecutePlan["基于规格执行计划"]
     UpdateNeeded -->|否| ExecutePlan["执行当前计划"]
 
     CheckInput -->|无| CheckCompletion{"工作计划已彻底完成?"}
     CheckCompletion -->|是| FinalUpdate["更新文档并结束"]
     CheckCompletion -->|否| UpdateNeeded
 
-    UpdateDocs --> ExecutePlan
     ExecutePlan --> CheckParallel{"是否有并行任务?"}
     CheckParallel -->|是| SplitTasks["拆分并行任务"]
     SplitTasks --> ExecuteParallel["并行执行任务"]
@@ -99,6 +99,8 @@ flowchart TD
     - 添加新工作流，状态设为 `ACTIVE`
    - **阅读文档**：
      - 阅读 docs/workflow.md（工作流程说明）
+     - 阅读 PRD.md（产品需求文档）
+     - 阅读 docs/context.md（项目最新状态快照）
      - 阅读 docs/working/workplan_{work_id}.md（任务非线性分解、动态规划、细节描述）
      - 阅读 docs/working/worknotes_{work_id}.md（上下文和经验）
    - **检查用户输入**：
@@ -141,6 +143,19 @@ flowchart TD
    - **更新进度**：
      - 更新 docs/working/workplan_{work_id}.md 的进度（仅在验证成功后）。注意：如当前环境支持任务管理也记得同步到环境的任务列表；
      - 更新 docs/working/worknotes_{work_id}.md 的上下文和经验,记录遇到的问题和解决方案;
+     - **立即更新 docs/context.md**：
+       - **作用定位**：项目当前状态的完整快照，便于新会话快速理解项目现状
+       - **内容原则**：只记录最新状态，不记录历史信息，便于直接覆盖更新（upsert）
+       - **核心内容**：
+         - 项目概览和当前目标
+         - 架构现状和技术栈
+         - 各模块当前状态和进展
+         - 关键技术决策和原因
+         - 当前待解决的核心问题
+         - 下一步重点工作方向
+       - **生成时机**：每次工作流状态变更、重要功能完成、架构调整后
+       - **维护方式**：人工维护，保持灵活性，直接替换全部内容而非追加
+       - **与规格关系**：作为PRD.md的动态补充，反映实施过程中的最新状态
      - **重要**：不要创建新的文档文件（如CHANGELOG.md），所有更新都应该记录在对应的工作文档中
    - **提交进度**：
      - 将更新的文档和代码变更提交到版本控制系统
@@ -332,6 +347,12 @@ flowchart TD
   - 证据驱动：基于数据和事实做决策，而非猜测
   - 持续反思：定期回顾决策，总结经验教训
   - 创新思维：敢于挑战常规，寻找更优解决方案
+- **上下文引擎**：通过 context.md 维护项目最新状态
+  - **更新时机**：每次更新 workplan/worknotes 后立即更新 context.md
+  - **内容特性**：保持内容简洁、准确、最新，便于快速理解
+  - **历史处理**：不记录历史信息，只记录当前状态，支持直接覆盖更新
+  - **定位作用**：作为 PRD.md 的动态补充和项目状态快照
+  - **使用场景**：新会话开始时的快速上下文建立，避免重复分析
 
 ## 并行任务处理
 

@@ -2,6 +2,15 @@
 
 > **数学可验证的AI自举进化：Computer-Use技术驱动的智能递归放大**
 
+## 进度
+
+- 虚拟公司主模式：HUB*BOT，其中1个Hub带2个Bot为最简模式。
+  - 利用Tmux技术管理多个命令行大模型（推荐ClaudeCode但也支持GeminiCli和Aider等）“克隆分身”
+  - 开发了ccx/web/模式实现分身监控和人机快速对话
+  - 目前在开发computer-use（基于视觉模型和外设双工事件流）和Computer-Use基于CDP实例
+  - 准备购买和部署边缘算力迷你机租成集群【等待成本核算】
+
+
 ## 项目概述
 
 本项目探索基于Computer-Use技术的AI自举进化理论框架，通过构建CyberCorp虚拟智能网络公司实现AI系统的自我改进和递归优化。

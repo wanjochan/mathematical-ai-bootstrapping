@@ -5,9 +5,14 @@
 ## 进度
 
 - 虚拟公司主模式：HUB*BOT，其中1个Hub带2个Bot为最简模式。
-  - 利用Tmux技术管理多个命令行大模型（推荐ClaudeCode但也支持GeminiCli和Aider等）“克隆分身”
+  - 利用Tmux技术管理多个命令行大模型“克隆分身”（推荐ClaudeCode但也支持GeminiCli和Aider等）
   - 开发了ccx/web/模式实现分身监控和人机快速对话
-  - 目前在开发computer-use（基于视觉模型和外设双工事件流）和Computer-Use基于CDP实例
+  - 目前在开发扩展
+    - computer-use（基于视觉模型和外设双工事件流）
+    - Browser-Use基于CDP实例
+    - Phone-Use
+    - ExternalDevice-Use
+    - Bot-Use
   - 准备购买和部署边缘算力迷你机租成集群【等待成本核算】
 
 
